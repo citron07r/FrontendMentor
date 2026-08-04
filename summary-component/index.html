@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/images/favicon-32x32.png">
+  <title>Frontend Mentor | Results summary component</title>
+  <style>
+    :root {
+      /* Primary */
+      --clr-primary-reaction: hsl(0, 100%, 67%);
+      --clr-primary-memory: hsl(39, 100%, 56%);
+      --clr-primary-verbal: hsl(166, 100%, 37%);
+      --clr-primary-visual: hsl(234, 85%, 45%);
+
+      --clr-primary-reaction-bg: hsla(0, 100%, 67%, 0.05);
+      --clr-primary-memory-bg: hsla(39, 100%, 56%, 0.05);
+      --clr-primary-verbal-bg: hsla(166, 100%, 37%, 0.05);
+      --clr-primary-visual-bg: hsla(234, 85%, 45%, 0.05);
+
+      /* Gradients */
+      --clr-grad-bg-start: hsl(252, 100%, 67%);
+      --clr-grad-bg-end: hsl(241, 81%, 54%);
+      --clr-grad-circle-start: hsla(256, 72%, 46%, 1);
+      --clr-grad-circle-end: hsla(241, 72%, 46%, 0);
+
+      /* Neutrals */
+      --clr-neutral-white: hsl(0, 0%, 100%);
+      --clr-neutral-pale-blue: hsl(221, 100%, 96%);
+      --clr-neutral-light-lavender: hsl(241, 100%, 89%);
+      --clr-neutral-dark-gray-blue: hsl(224, 30%, 27%);
+
+      --font-base: 'Hanken Grotesk', sans-serif;
+    }
+
+    @font-face {
+      font-family: 'Hanken Grotesk';
+      src: url('./assets/fonts/static/HankenGrotesk-Medium.ttf') format('truetype');
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Hanken Grotesk';
+      src: url('./assets/fonts/static/HankenGrotesk-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Hanken Grotesk';
+      src: url('./assets/fonts/static/HankenGrotesk-ExtraBold.ttf') format('truetype');
+      font-weight: 800;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background-color: var(--clr-neutral-white);
+      font-family: var(--font-base);
+      font-size: 18px;
+      color: var(--clr-neutral-dark-gray-blue);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    main.card {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .panel-result {
+      background: linear-gradient(to bottom, var(--clr-grad-bg-start), var(--clr-grad-bg-end));
+      border-radius: 0 0 32px 32px;
+      padding: 24px 32px 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .panel-result h1 {
+      color: var(--clr-neutral-light-lavender);
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0 0 24px;
+    }
+
+    .score-circle {
+      background: linear-gradient(to bottom, var(--clr-grad-circle-start), var(--clr-grad-circle-end));
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .score-circle .score {
+      color: var(--clr-neutral-white);
+      font-size: 56px;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .score-circle .max-score {
+      color: hsla(241, 100%, 89%, 0.52);
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .panel-result .grade {
+      color: var(--clr-neutral-white);
+      font-size: 24px;
+      font-weight: 700;
+      margin: 0 0 12px;
+    }
+
+    .panel-result .description {
+      color: hsla(241, 100%, 89%, 0.72);
+      font-size: 16px;
+      font-weight: 500;
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    .panel-summary {
+      padding: 24px 32px 32px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-summary h2 {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0 0 24px;
+      color: var(--clr-neutral-dark-gray-blue);
+    }
+
+    .summary-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .summary-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px;
+      border-radius: 12px;
+      font-weight: 700;
+    }
+
+    .summary-item .category {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .summary-item .score-wrapper {
+      color: var(--clr-neutral-dark-gray-blue);
+    }
+
+    .summary-item .score-wrapper .score-value {
+      font-weight: 800;
+    }
+
+    .summary-item .score-wrapper .score-max {
+      color: hsla(224, 30%, 27%, 0.5);
+    }
+
+    .item-reaction { background-color: var(--clr-primary-reaction-bg); color: var(--clr-primary-reaction); }
+    .item-memory { background-color: var(--clr-primary-memory-bg); color: var(--clr-primary-memory); }
+    .item-verbal { background-color: var(--clr-primary-verbal-bg); color: var(--clr-primary-verbal); }
+    .item-visual { background-color: var(--clr-primary-visual-bg); color: var(--clr-primary-visual); }
+
+    .btn-continue {
+      background-color: var(--clr-neutral-dark-gray-blue);
+      color: var(--clr-neutral-white);
+      border: none;
+      border-radius: 100px;
+      padding: 16px;
+      font-size: 18px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: box-shadow 0.2s ease, background 0.2s ease;
+      width: 100%;
+    }
+
+    .btn-continue:hover {
+      background: linear-gradient(to bottom, var(--clr-grad-bg-start), var(--clr-grad-bg-end));
+    }
+
+    .btn-continue:focus-visible {
+      outline: none;
+      background: linear-gradient(to bottom, var(--clr-grad-bg-start), var(--clr-grad-bg-end));
+      box-shadow: 0 0 0 4px var(--clr-neutral-white), 0 0 0 6px var(--clr-neutral-dark-gray-blue);
+    }
+
+    .attribution {
+      font-size: 0.6875rem;
+      text-align: center;
+      margin-top: auto;
+      padding: 16px;
+    }
+    
+    .attribution a {
+      color: hsl(228, 45%, 44%);
+    }
+
+    /* Desktop (min-width: 768px) */
+    @media (min-width: 768px) {
+      body {
+        background-color: var(--clr-neutral-pale-blue);
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+      
+      main.card {
+        flex-direction: row;
+        max-width: 736px;
+        border-radius: 32px;
+        box-shadow: 0 32px 64px rgba(36, 52, 126, 0.1);
+        background-color: var(--clr-neutral-white);
+      }
+      
+      .panel-result {
+        flex: 1;
+        border-radius: 32px;
+        padding: 40px 50px 50px;
+      }
+      
+      .panel-result h1 {
+        font-size: 24px;
+        margin-bottom: 35px;
+      }
+      
+      .score-circle {
+        width: 200px;
+        height: 200px;
+        margin-bottom: 30px;
+      }
+      
+      .score-circle .score {
+        font-size: 72px;
+      }
+      
+      .score-circle .max-score {
+        font-size: 18px;
+      }
+      
+      .panel-result .grade {
+        font-size: 32px;
+        margin-bottom: 15px;
+      }
+      
+      .panel-result .description {
+        font-size: 18px;
+      }
+      
+      .panel-summary {
+        flex: 1;
+        padding: 40px;
+      }
+      
+      .panel-summary h2 {
+        font-size: 24px;
+        margin-bottom: 28px;
+      }
+      
+      .summary-list {
+        margin-bottom: 40px;
+      }
+      
+      .btn-continue {
+        padding: 18px;
+      }
+      
+      .btn-continue:focus-visible {
+        box-shadow: 0 0 0 4px var(--clr-neutral-pale-blue), 0 0 0 6px var(--clr-neutral-dark-gray-blue);
+      }
+      
+      .attribution {
+        margin-top: 20px;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <section class="panel-result" aria-labelledby="result-heading">
+      <h1 id="result-heading">Your Result</h1>
+      <div class="score-circle">
+        <span class="score">76</span>
+        <span class="max-score">of 100</span>
+      </div>
+      <div class="grade">Great</div>
+      <p class="description">You scored higher than 65% of the people who have taken these tests.</p>
+    </section>
+
+    <section class="panel-summary" aria-labelledby="summary-heading">
+      <h2 id="summary-heading">Summary</h2>
+      <div class="summary-list">
+        <div class="summary-item item-reaction">
+          <div class="category">
+            <img src="./assets/images/icon-reaction.svg" alt="" aria-hidden="true">
+            <span>Reaction</span>
+          </div>
+          <div class="score-wrapper">
+            <span class="score-value">80</span>
+            <span class="score-max"> / 100</span>
+          </div>
+        </div>
+        <div class="summary-item item-memory">
+          <div class="category">
+            <img src="./assets/images/icon-memory.svg" alt="" aria-hidden="true">
+            <span>Memory</span>
+          </div>
+          <div class="score-wrapper">
+            <span class="score-value">92</span>
+            <span class="score-max"> / 100</span>
+          </div>
+        </div>
+        <div class="summary-item item-verbal">
+          <div class="category">
+            <img src="./assets/images/icon-verbal.svg" alt="" aria-hidden="true">
+            <span>Verbal</span>
+          </div>
+          <div class="score-wrapper">
+            <span class="score-value">61</span>
+            <span class="score-max"> / 100</span>
+          </div>
+        </div>
+        <div class="summary-item item-visual">
+          <div class="category">
+            <img src="./assets/images/icon-visual.svg" alt="" aria-hidden="true">
+            <span>Visual</span>
+          </div>
+          <div class="score-wrapper">
+            <span class="score-value">72</span>
+            <span class="score-max"> / 100</span>
+          </div>
+        </div>
+      </div>
+      <button class="btn-continue">Continue</button>
+    </section>
+  </main>
+  
+  <footer class="attribution">
+    Challenge by <a href="https://www.frontendmentor.io?ref=challenge">Frontend Mentor</a>. 
+    Coded by <a href="#">Your Name Here</a>.
+  </footer>
+</body>
+</html>
