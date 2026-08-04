@@ -175,6 +175,12 @@ main.card {
   color: hsla(224, 30%, 27%, 0.5);
 }
 
+.summary-error {
+  margin: 0 0 1.5rem;
+  font-size: 1rem;
+  color: var(--clr-primary-reaction);
+}
+
 .item-reaction { background-color: var(--clr-primary-reaction-bg); color: var(--clr-primary-reaction); }
 .item-memory { background-color: var(--clr-primary-memory-bg); color: var(--clr-primary-memory); }
 .item-verbal { background-color: var(--clr-primary-verbal-bg); color: var(--clr-primary-verbal); }
