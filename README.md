@@ -7,6 +7,7 @@ My solutions to [Frontend Mentor](https://www.frontendmentor.io) challenges. Eac
 | Challenge | Live site | Source |
 | --- | --- | --- |
 | Results summary component | [Live](https://citron07r.github.io/FrontendMentor/summary-component/) | [`summary-component/`](./summary-component) |
+| QR code component | [Live](https://citron07r.github.io/FrontendMentor/qr-code-component/) | [`qr-code-component/`](./qr-code-component) |
 
 ## Running locally
 
