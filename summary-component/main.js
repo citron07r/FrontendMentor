@@ -52,17 +52,20 @@ async function loadCategories() {
 
 async function renderSummary() {
   const list = document.querySelector('.summary-list');
-  const categories = await loadCategories().catch(() => null);
 
-  if (!categories) {
+  try {
+    const categories = await loadCategories();
+    list.append(...categories.map(createSummaryItem));
+  } catch (error) {
     const message = document.createElement('p');
     message.className = 'summary-error';
     message.textContent = 'The results could not be loaded. Serve this page over HTTP and reload.';
     list.replaceWith(message);
-    return;
-  }
 
-  list.append(...categories.map(createSummaryItem));
+    // Rethrown so the original status and stack reach the console instead of
+    // being flattened into a generic failure.
+    throw error;
+  }
 }
 
 renderSummary();
