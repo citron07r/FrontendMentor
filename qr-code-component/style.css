@@ -29,7 +29,7 @@ body {
 
 .card {
   background-color: var(--white);
-  max-width: 320px;
+  max-width: 20rem;
   width: 100%;
   padding: 1rem 1rem var(--card-padding-bottom);
   border-radius: 20px;
