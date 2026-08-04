@@ -42,7 +42,12 @@ function createSummaryItem({ category, score, icon }) {
 
 async function loadCategories() {
   const response = await fetch('./data.json');
-  return response.ok ? response.json() : null;
+
+  if (!response.ok) {
+    throw new Error(`data.json responded with ${response.status}`);
+  }
+
+  return response.json();
 }
 
 async function renderSummary() {
