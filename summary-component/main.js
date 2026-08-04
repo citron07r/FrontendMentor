@@ -40,24 +40,24 @@ function createSummaryItem({ category, score, icon }) {
   return item;
 }
 
+async function loadCategories() {
+  const response = await fetch('./data.json');
+  return response.ok ? response.json() : null;
+}
+
 async function renderSummary() {
   const list = document.querySelector('.summary-list');
+  const categories = await loadCategories().catch(() => null);
 
-  try {
-    const response = await fetch('./data.json');
-
-    if (!response.ok) {
-      throw new Error(`data.json responded with ${response.status}`);
-    }
-
-    list.append(...(await response.json()).map(createSummaryItem));
-  } catch (error) {
+  if (!categories) {
     const message = document.createElement('p');
     message.className = 'summary-error';
     message.textContent = 'The results could not be loaded. Serve this page over HTTP and reload.';
     list.replaceWith(message);
-    console.error(error);
+    return;
   }
+
+  list.append(...categories.map(createSummaryItem));
 }
 
 renderSummary();
