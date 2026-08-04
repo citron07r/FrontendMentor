@@ -22,6 +22,10 @@ Users should be able to:
 - View the optimal layout depending on their device's screen size
 - See hover and focus states for all interactive elements
 
+The optional bonus **is** implemented: the four category rows are fetched from `data.json` at runtime and rendered into the empty `.summary-list` element, so changing a score means editing the JSON, not the markup. The overall result (76 of 100, "Great") is not part of `data.json` and stays in the markup.
+
+Because the data is fetched, the page must be served over HTTP — opening `index.html` from the filesystem shows a message asking the reader to serve it instead.
+
 ## Screenshot
 
 ![Desktop layout of the results summary component](./screenshot.png)
@@ -33,9 +37,7 @@ Users should be able to:
 
 ## Running the project
 
-No build step or dependencies are required — the component is a single HTML file with inline styles and local font and icon assets.
-
-Open `index.html` directly in a browser, or serve the folder over HTTP:
+No build step or dependencies are required — the component is an HTML file, a stylesheet, a script, and local data, font, and icon assets. It does need to be served over HTTP so the `data.json` fetch succeeds:
 
 ```bash
 python3 -m http.server 8000
@@ -49,7 +51,9 @@ Then visit http://localhost:8000/summary-component/ from the repository root.
 - CSS custom properties
 - Flexbox
 - Mobile-first workflow
+- `rem` and `clamp()` sizing so text respects browser font-size settings
 - Self-hosted Hanken Grotesk via `@font-face`
+- Vanilla JavaScript with `fetch` for the JSON-driven summary list
 
 ## What I learned
 
@@ -59,10 +63,12 @@ Decorative category icons are hidden from assistive technology with an empty `al
 
 The continue button uses `:focus-visible` with a double `box-shadow` ring so keyboard focus stays visible against both the white mobile background and the pale blue desktop background.
 
+The summary script is a classic deferred script rather than a module. A `type="module"` script is blocked outright when the page is opened over `file://`, which means the code never runs and the `catch` branch never gets a chance to explain why the list is empty. A classic script does run, the `fetch` rejects, and the reader sees the error message instead of a silently missing section.
+
 ## Continued development
 
-- Extract the inline `<style>` block into a separate stylesheet once more challenges share tokens
-- Drive the scores from data rather than hard-coded markup
+- Promote the colour and spacing tokens into a shared stylesheet once more challenges reuse them
+- Move the overall score and grade into `data.json` so the whole card is data-driven
 
 ## Author
 
