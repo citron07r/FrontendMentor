@@ -3,6 +3,8 @@
   --slate-300: hsl(212, 45%, 89%);
   --slate-500: hsl(216, 15%, 48%);
   --slate-900: hsl(218, 44%, 22%);
+
+  --card-padding-bottom: 2.5rem;
 }
 
 *,
@@ -15,7 +17,7 @@
 
 body {
   font-family: 'Outfit', sans-serif;
-  font-size: 15px;
+  font-size: 0.9375rem;
   background-color: var(--slate-300);
   min-height: 100vh;
   display: flex;
@@ -29,7 +31,7 @@ body {
   background-color: var(--white);
   max-width: 320px;
   width: 100%;
-  padding: 1rem 1rem 2.5rem;
+  padding: 1rem 1rem var(--card-padding-bottom);
   border-radius: 20px;
   box-shadow: 0 25px 25px rgba(0, 0, 0, 0.0477);
   text-align: center;
@@ -65,14 +67,25 @@ body {
 
 .attribution a {
   color: var(--slate-900);
+  border-radius: 0.125rem;
+  transition: color 0.2s ease;
+}
+
+.attribution a:hover {
+  color: var(--slate-500);
+}
+
+.attribution a:focus-visible {
+  outline: 0.125rem solid var(--slate-900);
+  outline-offset: 0.125rem;
 }
 
 @media (max-width: 375px) {
-  body {
-    padding: 1rem;
+  :root {
+    --card-padding-bottom: 2rem;
   }
 
-  .card {
-    padding: 1rem 1rem 2rem;
+  body {
+    padding: 1rem;
   }
 }
