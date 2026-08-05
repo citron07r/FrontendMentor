@@ -699,7 +699,11 @@ button:focus-visible {
     display: flex;
   }
 
-  /* Sidebar becomes an off-canvas menu */
+  /* Sidebar becomes an off-canvas menu.
+     visibility, not just transform, so the panel is genuinely hidden: its
+     links leave the tab order and the accessibility tree while it is away,
+     even before the script toggles inert. The visibility change is delayed
+     on close so the slide-out animation still plays. */
   .sidebar {
     position: fixed;
     inset: 0 auto 0 0;
@@ -707,13 +711,16 @@ button:focus-visible {
     height: 100dvh;
     z-index: 20;
     transform: translateX(-105%);
-    transition: transform 250ms ease;
+    visibility: hidden;
+    transition: transform 250ms ease, visibility 0s linear 250ms;
     box-shadow: var(--shadow-lift);
     overflow-y: auto;
   }
 
   .sidebar.is-open {
     transform: translateX(0);
+    visibility: visible;
+    transition: transform 250ms ease, visibility 0s;
   }
 
   .menu-close {
