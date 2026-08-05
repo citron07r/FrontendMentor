@@ -240,7 +240,6 @@ footer {
 .social-links a:focus-visible {
   border-color: var(--magenta-400);
   color: var(--magenta-400);
-  outline: none;
 }
 
 .social-links a:focus-visible {
