@@ -6,63 +6,99 @@
 
   /* ---------- Wi-Fi copy button ---------- */
 
-  var copyBtn = document.getElementById('copy-wifi');
-  var wifiPassword = document.getElementById('wifi-password');
+  const copyBtn = document.getElementById('copy-wifi');
+  const wifiPassword = document.getElementById('wifi-password');
+
+  // Returns whether the copy actually landed, so the caller never claims
+  // success on a browser that refused the clipboard.
+  function fallbackCopy(text) {
+    const field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'absolute';
+    field.style.left = '-9999px';
+    document.body.appendChild(field);
+    field.select();
+
+    let copied = false;
+    try {
+      copied = document.execCommand('copy');
+    } catch (error) {
+      copied = false;
+    }
+
+    document.body.removeChild(field);
+    return copied;
+  }
 
   if (copyBtn && wifiPassword) {
-    copyBtn.addEventListener('click', function () {
-      var text = wifiPassword.textContent.trim();
+    let resetTimer;
 
-      function showCopied() {
-        copyBtn.textContent = 'Copied';
-        copyBtn.classList.add('is-copied');
-        window.setTimeout(function () {
-          copyBtn.textContent = 'Copy';
-          copyBtn.classList.remove('is-copied');
-        }, 2000);
-      }
+    function flash(label, stateClass) {
+      copyBtn.textContent = label;
+      copyBtn.classList.remove('is-copied', 'is-failed');
+      if (stateClass) copyBtn.classList.add(stateClass);
+
+      window.clearTimeout(resetTimer);
+      resetTimer = window.setTimeout(function () {
+        copyBtn.textContent = 'Copy';
+        copyBtn.classList.remove('is-copied', 'is-failed');
+      }, 2000);
+    }
+
+    copyBtn.addEventListener('click', async function () {
+      const text = wifiPassword.textContent.trim();
+      let copied = false;
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(showCopied, function () {
-          fallbackCopy(text);
-          showCopied();
-        });
+        try {
+          await navigator.clipboard.writeText(text);
+          copied = true;
+        } catch (error) {
+          copied = fallbackCopy(text);
+        }
       } else {
-        fallbackCopy(text);
-        showCopied();
+        copied = fallbackCopy(text);
+      }
+
+      if (copied) {
+        flash('Copied', 'is-copied');
+      } else {
+        flash('Copy failed', 'is-failed');
       }
     });
   }
 
-  function fallbackCopy(text) {
-    var ta = document.createElement('textarea');
-    ta.value = text;
-    ta.setAttribute('readonly', '');
-    ta.style.position = 'absolute';
-    ta.style.left = '-9999px';
-    document.body.appendChild(ta);
-    ta.select();
-    try {
-      document.execCommand('copy');
-    } catch (e) {
-      // Clipboard unavailable — nothing else to do.
-    }
-    document.body.removeChild(ta);
-  }
-
   /* ---------- Mobile menu toggle ---------- */
 
-  var sidebar = document.getElementById('sidebar');
-  var menuToggle = document.getElementById('menu-toggle');
-  var menuClose = document.getElementById('menu-close');
-  var scrim = document.getElementById('scrim');
+  const sidebar = document.getElementById('sidebar');
+  const menuToggle = document.getElementById('menu-toggle');
+  const menuClose = document.getElementById('menu-close');
+  const scrim = document.getElementById('scrim');
 
   if (!sidebar || !menuToggle) return;
+
+  // Mirrors the breakpoint where the sidebar becomes an off-canvas panel.
+  const offCanvasQuery = window.matchMedia('(max-width: 900px)');
+
+  // While the panel sits off-screen its links stay in the document, so without
+  // inert a keyboard user tabs through navigation they cannot see.
+  function syncHiddenState() {
+    const hidden = offCanvasQuery.matches && !sidebar.classList.contains('is-open');
+    sidebar.toggleAttribute('inert', hidden);
+
+    if (hidden) {
+      sidebar.setAttribute('aria-hidden', 'true');
+    } else {
+      sidebar.removeAttribute('aria-hidden');
+    }
+  }
 
   function openMenu() {
     sidebar.classList.add('is-open');
     menuToggle.setAttribute('aria-expanded', 'true');
     if (scrim) scrim.hidden = false;
+    syncHiddenState();
     if (menuClose) menuClose.focus();
   }
 
@@ -70,6 +106,7 @@
     sidebar.classList.remove('is-open');
     menuToggle.setAttribute('aria-expanded', 'false');
     if (scrim) scrim.hidden = true;
+    syncHiddenState();
     menuToggle.focus();
   }
 
@@ -90,4 +127,7 @@
       if (sidebar.classList.contains('is-open')) closeMenu();
     });
   });
+
+  offCanvasQuery.addEventListener('change', syncHiddenState);
+  syncHiddenState();
 })();
