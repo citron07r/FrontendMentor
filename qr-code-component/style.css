@@ -37,6 +37,16 @@ body {
   text-align: center;
 }
 
+.qr-link {
+  display: block;
+  border-radius: 10px;
+}
+
+.qr-link:focus-visible {
+  outline: 0.125rem solid var(--slate-900);
+  outline-offset: 0.25rem;
+}
+
 .card img {
   display: block;
   width: 100%;

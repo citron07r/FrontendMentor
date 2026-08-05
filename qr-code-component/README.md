@@ -51,6 +51,8 @@ The QR image rendered as a 2:1 rectangle even though the source file is square. 
 
 The lesson is that `width`/`height` attributes and CSS width are not a matched pair; overriding one without `height: auto` breaks the aspect ratio.
 
+The QR code is wrapped in a link to the destination it encodes. Describing the destination in `alt` while leaving the image inert sets up a promise the markup cannot keep: a screen reader announces somewhere to go, and a keyboard user has no way to get there. Scanning only works for people holding a camera, so the link is the equivalent path for everyone else.
+
 A second bug came from positioning the footer:
 
 ```css
