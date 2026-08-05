@@ -20,9 +20,24 @@ A one-screen marketing page: logo, hero illustration, headline, supporting copy,
 
 ### Screenshot
 
+Desktop, 1440px:
+
 ![Desktop layout of the Huddle landing page](./screenshot-desktop-1440.png)
 
-The mobile layout is captured in [screenshot-mobile-375.png](./screenshot-mobile-375.png).
+Mobile, 375px:
+
+![Mobile layout of the Huddle landing page](./screenshot-mobile-375.png)
+
+### Challenge requirements
+
+| Required behaviour | How it is met |
+| --- | --- |
+| Optimal layout for the device's screen size | Single column by default; two-column split at `min-width: 1024px`, with the header and footer padding widening at the same breakpoint |
+| Background artwork adapts | `bg-mobile.svg` sized to `100vw` by default, swapped for `bg-desktop.svg` at `min-width: 768px` |
+| Hover states for interactive elements | Register button inverts to the magenta accent; social icons shift border and glyph colour together via `currentColor` |
+| Keyboard focus states | `:focus-visible` outlines on the register button and each social link, offset from the accent colour change |
+| Keyboard bypass of the header | Visually hidden skip link, revealed on focus, jumps to `#main` |
+| Icons and artwork exposed correctly | Social links carry `aria-label`; background artwork stays decorative in CSS so screen readers skip it |
 
 ### Links
 
@@ -59,9 +74,12 @@ The social icons are inline SVG with `fill: currentColor`, so a single `color` c
 
 Interactive elements share one accent colour for hover and focus, and `:focus-visible` adds an offset outline on top of that colour change, so keyboard users get a visible ring without mouse users seeing one on click.
 
+A skip link sits before the header so keyboard users can jump past the logo straight to `#main`. It uses `:focus` rather than `:focus-visible`, because a skip link should appear for any focus that reaches it, and `main` carries `tabindex="-1"` so the jump actually moves focus in every browser.
+
+The register button is sized with `min-width`, `min-height`, and padding instead of fixed `width`/`height`, so it holds the design's 200 × 40 (200 × 56 on desktop) at default settings but can still grow if the label or font size changes.
+
 ### Continued development
 
-- Move the `<style>` block into a separate stylesheet, matching the other solutions in this repository
 - Give the register link a real destination once there is somewhere for it to point
 
 ## Author
