@@ -76,6 +76,8 @@ Interactive elements share one accent colour for hover and focus, and `:focus-vi
 
 A skip link sits before the header so keyboard users can jump past the logo straight to `#main`. It uses `:focus` rather than `:focus-visible`, because a skip link should appear for any focus that reaches it, and `main` carries `tabindex="-1"` so the jump actually moves focus in every browser.
 
+Once focus lands there, `main:focus-visible` draws an accent outline so the reader can see where they arrived. Suppressing that outline would have made the skip link move focus invisibly; scoping the style to `:focus-visible` keeps the ring for keyboard users without showing it to anyone who clicks inside the section with a mouse.
+
 The register button is sized with `min-width`, `min-height`, and padding instead of fixed `width`/`height`, so it holds the design's 200 × 40 (200 × 56 on desktop) at default settings but can still grow if the label or font size changes.
 
 ### Continued development

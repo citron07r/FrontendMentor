@@ -56,8 +56,9 @@ body {
   outline-offset: 2px;
 }
 
-main:focus {
-  outline: none;
+main:focus-visible {
+  outline: 2px solid var(--magenta-400);
+  outline-offset: 4px;
 }
 
 .content-wrapper {
