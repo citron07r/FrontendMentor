@@ -15,7 +15,7 @@
 
   <header class="app-header">
     <div class="brand">
-      <p class="wordmark">Tastemap</p>
+      <h1 class="wordmark">Tastemap</h1>
       <p class="tagline">Star ratings are useless. Rank where you actually eat.</p>
     </div>
     <nav class="app-actions" aria-label="App actions">
@@ -26,9 +26,9 @@
     </nav>
   </header>
 
-  <div class="view-tabs" role="tablist" aria-label="Switch view">
-    <button type="button" role="tab" id="tab-map" class="view-tab" aria-selected="true" data-view="map">Map</button>
-    <button type="button" role="tab" id="tab-list" class="view-tab" aria-selected="false" data-view="list">List</button>
+  <div class="view-tabs" role="group" aria-label="Switch view">
+    <button type="button" id="tab-map" class="view-tab" aria-pressed="true" data-view="map">Map</button>
+    <button type="button" id="tab-list" class="view-tab" aria-pressed="false" data-view="list">List</button>
   </div>
 
   <main id="main" class="app-main">
@@ -38,9 +38,9 @@
         <p>Couldn't load the map tiles — your list still works.</p>
         <button type="button" id="map-retry" class="btn btn-ghost">Retry</button>
       </div>
-      <div class="map-legend" aria-hidden="true">
-        <span class="legend-item"><span class="legend-pin legend-pin-ranked">1</span> Been &amp; ranked</span>
-        <span class="legend-item"><span class="legend-pin legend-pin-want">★</span> Want to try</span>
+      <div class="map-legend">
+        <span class="legend-item"><span class="legend-pin legend-pin-ranked" aria-hidden="true">1</span> Numbered pins: been &amp; ranked</span>
+        <span class="legend-item"><span class="legend-pin legend-pin-want" aria-hidden="true">★</span> Starred pins: want to try</span>
       </div>
     </section>
 

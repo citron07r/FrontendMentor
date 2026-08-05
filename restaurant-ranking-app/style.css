@@ -670,7 +670,7 @@ kbd {
     min-height: 2.75rem;
   }
   .view-tab:hover { background: var(--color-bg-tertiary); }
-  .view-tab[aria-selected="true"] {
+  .view-tab[aria-pressed="true"] {
     background: var(--color-primary);
     border-color: var(--color-primary);
     color: var(--color-on-primary);

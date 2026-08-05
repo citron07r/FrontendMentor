@@ -554,12 +554,22 @@ function renumber() {
 /* ============================================================
    Add / edit form
    ============================================================ */
+// Keeps the message, the field's validity state, and the link between them in
+// step, so the error is never announced without saying which field it belongs to.
+function setNameError(hasError) {
+  const field = $('#f-name');
+  $('#f-name-error').hidden = !hasError;
+  field.setAttribute('aria-invalid', String(hasError));
+  if (hasError) field.setAttribute('aria-describedby', 'f-name-error');
+  else field.removeAttribute('aria-describedby');
+}
+
 function openForm(id = null) {
   editingId = id;
   lastFocus = document.activeElement;
   const form = $('#place-form');
   form.reset();
-  $('#f-name-error').hidden = true;
+  setNameError(false);
 
   const groupSel = $('#f-cuisine-group');
   groupSel.innerHTML = meta.cuisineGroups
@@ -603,12 +613,11 @@ function submitForm(e) {
   const form = e.target;
   const name = $('#f-name').value.trim();
   if (!name) {
-    $('#f-name-error').hidden = false;
-    $('#f-name').setAttribute('aria-describedby', 'f-name-error');
+    setNameError(true);
     $('#f-name').focus();
     return;
   }
-  $('#f-name-error').hidden = true;
+  setNameError(false);
 
   const wasRanked = editingId ? byId(editingId)?.status === 'ranked' : false;
   const status = form.elements.status.value === 'been' ? 'ranked' : 'want';
@@ -788,7 +797,7 @@ function initViewTabs() {
     tab.addEventListener('click', () => {
       document.body.dataset.view = tab.dataset.view;
       document.querySelectorAll('.view-tab').forEach((t) =>
-        t.setAttribute('aria-selected', String(t === tab))
+        t.setAttribute('aria-pressed', String(t === tab))
       );
       if (tab.dataset.view === 'map' && map) map.invalidateSize();
     });
