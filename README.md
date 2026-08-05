@@ -10,6 +10,7 @@ My solutions to [Frontend Mentor](https://www.frontendmentor.io) challenges. Eac
 | QR code component | [Live](https://citron07r.github.io/FrontendMentor/qr-code-component/) | [`qr-code-component/`](./qr-code-component) |
 | Huddle landing page | [Live](https://citron07r.github.io/FrontendMentor/huddle-landing-page/) | [`huddle-landing-page/`](./huddle-landing-page) |
 | Hotel booking confirmation | [Live](https://citron07r.github.io/FrontendMentor/hotel-booking-confirmation/) | [`hotel-booking-confirmation/`](./hotel-booking-confirmation) |
+| Tastemap restaurant ranking app | [Live](https://citron07r.github.io/FrontendMentor/restaurant-ranking-app/) | [`restaurant-ranking-app/`](./restaurant-ranking-app) |
 
 ## Running locally
 
