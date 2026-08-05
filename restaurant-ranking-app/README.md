@@ -43,14 +43,14 @@ Then visit http://localhost:8000/restaurant-ranking-app/.
 
 - Semantic HTML5 with `header`, `main`, `aside`, and `dialog`-role overlays
 - CSS custom properties, split into `tokens.css` (the design system) and `style.css` (the components that consume it)
-- [Leaflet](https://leafletjs.com) for the map, with CARTO tiles
+- [Leaflet](https://leafletjs.com) with [Leaflet.markercluster](https://github.com/Leaflet/Leaflet.markercluster) for the map, on CARTO tiles
 - Vanilla JavaScript, no framework or build step
 - `localStorage` for persistence, seeded from `data/sample-places.json`
 
 ### Features
 
 - **Ranking by comparison** — adding a place you have been to opens a duel: two places, pick the better one. The flow binary-searches the existing order, so placing a 15th restaurant takes about four questions rather than fourteen. Arrow keys choose, `T` records a tie, `Esc` bails out.
-- **Map and list side by side** — 32 pins, cuisine-tinted avatars, ranked pins numbered and wishlist pins starred. Below the breakpoint the two become tabs.
+- **Map and list side by side** — 32 pins, cuisine-tinted avatars, ranked pins numbered and wishlist pins starred. Nearby pins cluster, so the seven places packed into Soho stay tappable; choosing one from the list expands its cluster rather than panning to a pin that is still hidden inside it. Below the breakpoint map and list become tabs.
 - **Filters** — free-text search across name, cuisine, area, and tags, plus status, cuisine, and price filters, with a live result count announced politely.
 - **Detail sheet** — per-place notes, address, and a website link only when one exists.
 - **Light and dark themes**, remembered across visits.
@@ -63,11 +63,12 @@ The lesson is about failure mode, not about tokens. A stylesheet that consumes v
 
 The comparison flow was the other thing worth getting right. A naive implementation compares a new place against every ranked place, which is fine at 14 and miserable at 100. Treating the ranked list as sorted and binary-searching the insertion point turns that into a logarithmic number of questions — the "Question 1 of ~4" estimate the duel shows is `ceil(log2(n))`.
 
+Two smaller lessons came from re-reading the data layer. Escaping a URL for HTML does nothing about its scheme: `javascript:alert(1)` survives `esc()` untouched and runs when the link is clicked, so the website field is now parsed with `new URL()` and only rendered when the protocol is `http:` or `https:`. And the seed fetch used to run before saved data was consulted, which meant a second visit without a network hid places the visitor already had — saved data is now read first, and the fetch only has to succeed on a genuine first visit.
+
 ### Continued development
 
 - Split `script.js` and `style.css`; both run long enough that map, ranking, and form concerns would be clearer as separate modules
 - Recompute the order from the stored comparison history rather than persisting resolved positions, so an early answer can be revised
-- Cluster the dense Soho pins, which overlap at low zoom
 
 ## Author
 
