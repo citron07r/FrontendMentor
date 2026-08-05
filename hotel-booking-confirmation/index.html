@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/images/favicon-32x32.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;1,400&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+
+  <title>Maison Soleil | Booking confirmed</title>
+  <script src="script.js" defer></script>
+</head>
+<body>
+
+  <!-- Sidebar starts -->
+  <aside class="sidebar" id="sidebar" aria-label="Guest navigation">
+    <div class="sidebar-top">
+      <a class="brand" href="#" aria-label="Maison Soleil home">
+        <img src="./assets/images/logo.svg" alt="Maison Soleil" width="107" height="42">
+      </a>
+      <button class="menu-close" id="menu-close" type="button" aria-label="Close menu">
+        <img src="./assets/images/icon-close.svg" alt="" width="20" height="20">
+      </button>
+    </div>
+
+    <nav class="nav" aria-label="Guest">
+      <ul class="nav-list">
+        <li>
+          <a class="nav-link is-active" href="#" aria-current="page">
+            <img src="./assets/images/icon-bed.svg" alt="" width="20" height="20">
+            <span>Your stay</span>
+            <span class="nav-badge" aria-label="1 new update">1</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-link" href="#">
+            <img src="./assets/images/icon-house.svg" alt="" width="20" height="20">
+            <span>The house</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-link" href="#">
+            <img src="./assets/images/icon-pin.svg" alt="" width="20" height="20">
+            <span>Around town</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-link" href="#">
+            <img src="./assets/images/icon-breakfast.svg" alt="" width="20" height="20">
+            <span>Breakfast</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-link" href="#">
+            <img src="./assets/images/icon-mail.svg" alt="" width="20" height="20">
+            <span>Messages</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <!-- Local weather -->
+      <div class="weather-card">
+        <p class="weather-label">Today in Cassis</p>
+        <p class="weather-temp">27°</p>
+        <p class="weather-desc">Sunny · light breeze</p>
+        <img class="weather-sun" src="./assets/images/illustration-sun.svg" alt="" width="164" height="164" aria-hidden="true">
+      </div>
+
+      <div class="sidebar-footer">
+        <p class="est">Est. 1987</p>
+        <p>Maison Soleil · 12 Rue des Oliviers · Cassis</p>
+        <p>© 2026 Maison Soleil</p>
+      </div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+  <!-- Sidebar ends -->
+
+  <!-- Main content starts -->
+  <main class="main">
+    <header class="topbar">
+      <a class="brand brand-mobile" href="#" aria-label="Maison Soleil home">
+        <img src="./assets/images/logo.svg" alt="Maison Soleil" width="107" height="42">
+      </a>
+      <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+        <img src="./assets/images/icon-menu.svg" alt="" width="20" height="20">
+      </button>
+    </header>
+
+    <div class="page-head">
+      <div>
+        <p class="eyebrow">Booking · Confirmed</p>
+        <h1 class="page-title">Bienvenue, <em>Lucia</em>.</h1>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-ghost" type="button">Print receipt</button>
+        <button class="btn btn-dark" type="button">Add to calendar</button>
+      </div>
+    </div>
+
+    <!-- Booking cards start -->
+    <section class="cards" aria-label="Booking details">
+
+      <!-- Receipt card -->
+      <article class="card receipt-card" aria-label="Booking receipt">
+        <header class="receipt-head">
+          <span class="receipt-label">Receipt</span>
+          <span class="receipt-no">№ MS-2026<br>0421-AH</span>
+        </header>
+
+        <h2 class="receipt-title">Your stay</h2>
+
+        <div class="receipt-dates">
+          <div class="receipt-date">
+            <p class="receipt-date-label">Check in</p>
+            <p class="receipt-date-day">25 Apr</p>
+            <p class="receipt-date-meta">Saturday · 15:00</p>
+          </div>
+          <div class="receipt-date">
+            <p class="receipt-date-label">Check out</p>
+            <p class="receipt-date-day">29 Apr</p>
+            <p class="receipt-date-meta">Wednesday · 11:00</p>
+          </div>
+        </div>
+
+        <hr class="receipt-rule">
+
+        <ul class="receipt-lines">
+          <li class="receipt-line">
+            <span>Room · La Garrigue · 4 nights</span>
+            <span>€ 620.00</span>
+          </li>
+          <li class="receipt-line">
+            <span>Breakfast · 2 guests</span>
+            <span>€ 96.00</span>
+          </li>
+          <li class="receipt-line">
+            <span>Tourist tax</span>
+            <span>€ 14.40</span>
+          </li>
+        </ul>
+
+        <hr class="receipt-rule receipt-rule-dashed">
+
+        <div class="receipt-total">
+          <span class="receipt-total-label">Total paid</span>
+          <span class="receipt-total-value">€ 730.40</span>
+        </div>
+
+        <div class="receipt-foot">
+          <p class="receipt-paid">Paid · Wise · GBP</p>
+          <img class="receipt-barcode" src="./assets/images/icon-barcode.svg" alt="Booking barcode" width="93" height="28">
+        </div>
+      </article>
+
+      <!-- Note from host card -->
+      <article class="card host-card" aria-label="Note from your host">
+        <img class="host-sun" src="./assets/images/icon-sun.svg" alt="" width="40" height="40" aria-hidden="true">
+        <p class="host-label">Welcome card</p>
+        <h2 class="host-title"><em>A note from your host,</em><br>Margaux.</h2>
+        <p class="host-message">We're so glad you're coming. The shutters will be open, the lemonade cold, and the cat – Poivre – pretending not to notice you.</p>
+        <div class="host-room">
+          <p class="host-room-label">Room</p>
+          <p class="host-room-name">La Garrigue</p>
+        </div>
+      </article>
+
+    </section>
+
+    <p class="save-note">
+      <img src="./assets/images/icon-sparkle.svg" alt="" width="16" height="16" aria-hidden="true">
+      Save to pay
+      <img src="./assets/images/icon-sparkle.svg" alt="" width="16" height="16" aria-hidden="true">
+    </p>
+    <!-- Booking cards end -->
+
+    <!-- Guest info row starts -->
+    <section class="info-row" aria-label="Guest information">
+
+      <!-- Arrival -->
+      <article class="card info-card">
+        <header class="info-head">
+          <span class="info-chip info-chip-terracotta">
+            <img src="./assets/images/icon-key.svg" alt="" width="20" height="20">
+          </span>
+          <span class="info-label">Arrival</span>
+          <span class="info-num info-num-terracotta">01</span>
+        </header>
+        <h2 class="info-title">Check-in from 15:00</h2>
+        <p class="info-sub">Sat, 25 April</p>
+        <p class="info-body">Ring the brass bell by the blue door. If we're at the market, the key is in the terracotta pot by the olive tree.</p>
+      </article>
+
+      <!-- Wifi -->
+      <article class="card info-card">
+        <header class="info-head">
+          <span class="info-chip info-chip-blue">
+            <img src="./assets/images/icon-wifi.svg" alt="" width="20" height="20">
+          </span>
+          <span class="info-label">Wifi</span>
+          <span class="info-num info-num-blue">02</span>
+        </header>
+        <h2 class="info-title">Le Soleil · Guest</h2>
+        <p class="info-sub">Password below</p>
+        <dl class="wifi-details">
+          <div class="wifi-row">
+            <dt>Network</dt>
+            <dd>Le Soleil · Guest</dd>
+          </div>
+          <div class="wifi-row">
+            <dt>Password</dt>
+            <dd>
+              <span id="wifi-password">soleil-2026</span>
+              <button class="copy-btn" id="copy-wifi" type="button" aria-label="Copy Wi-Fi password">Copy</button>
+            </dd>
+          </div>
+        </dl>
+      </article>
+
+      <!-- Breakfast -->
+      <article class="card info-card">
+        <header class="info-head">
+          <span class="info-chip info-chip-rose">
+            <img src="./assets/images/icon-breakfast-outline.svg" alt="" width="20" height="20">
+          </span>
+          <span class="info-label">Breakfast</span>
+          <span class="info-num info-num-rose">03</span>
+        </header>
+        <h2 class="info-title">Served 8 – 10:30</h2>
+        <p class="info-sub">On the terrace</p>
+        <p class="info-body">Fresh figs, Marseille honey, pain au levain, and espresso. Gluten-free option? Leave a note the night before.</p>
+      </article>
+
+    </section>
+    <!-- Guest info row ends -->
+  </main>
+  <!-- Main content ends -->
+</body>
+</html>
