@@ -1,0 +1,188 @@
+/* ============================================================
+   Tastemap — Design Tokens ("Grove" direction)
+   Colours are OKLCH: perceptually uniform, easy to keep a hue
+   constant while varying lightness/chroma. The brand is a
+   herb-garden green (~150); neutrals are tinted a few points
+   toward it so nothing reads cold, and honey/amber (~80) is the
+   single warm accent. See guidance/brand-kit.md for rationale.
+   ============================================================ */
+
+:root {
+  /* Surfaces & neutrals (light) — tinted toward the green brand hue */
+  --color-bg-primary: oklch(0.976 0.010 145);
+  --color-bg-secondary: oklch(0.958 0.013 145);
+  --color-bg-tertiary: oklch(0.948 0.014 145);
+  --color-surface: oklch(0.995 0.005 145);
+  --color-border: oklch(0.893 0.013 145);
+  --color-border-strong: oklch(0.845 0.017 142);
+
+  /* Text (light) */
+  --color-text-primary: oklch(0.262 0.024 155);
+  --color-text-secondary: oklch(0.405 0.022 152);
+  --color-text-tertiary: oklch(0.552 0.020 150);
+
+  /* Brand & semantic (light) */
+  --color-primary: oklch(0.520 0.098 150);        /* herb green */
+  --color-primary-hover: oklch(0.440 0.086 150);
+  --color-primary-subtle: oklch(0.940 0.030 150);
+  --color-on-primary: oklch(0.988 0.012 150);
+  --color-highlight: oklch(0.780 0.120 80);        /* honey — the one warm accent */
+  --color-highlight-strong: oklch(0.700 0.128 74);
+  --color-positive: oklch(0.545 0.095 148);        /* success green (won) */
+  --color-danger: oklch(0.577 0.192 25);
+
+  /* Cuisine avatar tints — deep enough to read as distinct cuisines
+     at a glance (text sits on top in --color-text-primary). */
+  --cuisine-british: oklch(0.860 0.075 42);
+  --cuisine-spanish: oklch(0.858 0.088 32);
+  --cuisine-italian: oklch(0.865 0.080 128);
+  --cuisine-european: oklch(0.880 0.045 250);
+  --cuisine-thai: oklch(0.885 0.090 82);
+  --cuisine-indian: oklch(0.858 0.088 28);
+  --cuisine-easian: oklch(0.875 0.075 300);
+  --cuisine-mideast: oklch(0.875 0.080 60);
+  --cuisine-african: oklch(0.870 0.090 70);
+  --cuisine-seafood: oklch(0.875 0.078 200);
+  --cuisine-other: oklch(0.898 0.018 145);
+
+  /* Typography */
+  --font-display: "Bespoke Serif", Georgia, "Times New Roman", serif;
+  --font-body: "Switzer", system-ui, -apple-system, sans-serif;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-3xl: 2.75rem;
+  --text-rank: 1.75rem;
+
+  --leading-tight: 1.05;
+  --leading-snug: 1.15;
+  --leading-normal: 1.35;
+  --leading-relaxed: 1.5;
+  --leading-prose: 1.55;
+
+  --font-regular: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Spacing (4px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-16: 4rem;
+
+  /* Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+  --radius-full: 9999rem;
+
+  /* Shadows — tinted toward the green brand hue */
+  --shadow-sm: 0 1px 3px oklch(0.40 0.045 150 / 0.08);
+  --shadow-md: 0 8px 24px -12px oklch(0.40 0.045 150 / 0.35);
+  --shadow-lg: 0 30px 60px -22px oklch(0.40 0.045 150 / 0.5),
+               0 4px 14px -8px oklch(0.40 0.045 150 / 0.3);
+
+  /* Layout */
+  --rail-width: 25.75rem;
+  --content-max-width: 72rem;
+  --sheet-max-width: 30rem;
+  --page-max-width: 80rem;
+}
+
+/* ---- Dark mode ----------------------------------------------
+   Applies automatically by system preference, OR when you set
+   data-theme="dark" on <html> (for a manual toggle). A garden
+   after dark: deep green-black surfaces, honey accent lifts. */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg-primary: oklch(0.205 0.012 150);
+    --color-bg-secondary: oklch(0.240 0.014 150);
+    --color-bg-tertiary: oklch(0.285 0.016 150);
+    --color-surface: oklch(0.258 0.014 150);
+    --color-border: oklch(0.345 0.018 150);
+    --color-border-strong: oklch(0.420 0.020 150);
+
+    --color-text-primary: oklch(0.930 0.012 145);
+    --color-text-secondary: oklch(0.720 0.018 150);
+    --color-text-tertiary: oklch(0.580 0.018 150);
+
+    --color-primary: oklch(0.680 0.110 150);
+    --color-primary-hover: oklch(0.750 0.100 150);
+    --color-primary-subtle: oklch(0.320 0.045 150);
+    --color-on-primary: oklch(0.185 0.012 150);
+    --color-highlight: oklch(0.800 0.115 82);
+    --color-highlight-strong: oklch(0.860 0.100 84);
+    --color-positive: oklch(0.720 0.095 145);
+    --color-danger: oklch(0.680 0.150 28);
+
+    --cuisine-british: oklch(0.470 0.055 42);
+    --cuisine-spanish: oklch(0.470 0.060 32);
+    --cuisine-italian: oklch(0.470 0.060 128);
+    --cuisine-european: oklch(0.480 0.045 250);
+    --cuisine-thai: oklch(0.490 0.070 82);
+    --cuisine-indian: oklch(0.470 0.070 28);
+    --cuisine-easian: oklch(0.470 0.060 300);
+    --cuisine-mideast: oklch(0.480 0.060 60);
+    --cuisine-african: oklch(0.480 0.065 70);
+    --cuisine-seafood: oklch(0.470 0.055 200);
+    --cuisine-other: oklch(0.420 0.018 145);
+
+    --shadow-sm: 0 1px 3px oklch(0 0 0 / 0.35);
+    --shadow-md: 0 8px 24px -12px oklch(0 0 0 / 0.55);
+    --shadow-lg: 0 30px 60px -22px oklch(0 0 0 / 0.7),
+                 0 4px 14px -8px oklch(0 0 0 / 0.5);
+  }
+}
+
+/* Explicit manual dark (mirrors the block above) so a toggle can
+   force dark regardless of system preference. */
+:root[data-theme="dark"] {
+  --color-bg-primary: oklch(0.205 0.012 150);
+  --color-bg-secondary: oklch(0.240 0.014 150);
+  --color-bg-tertiary: oklch(0.285 0.016 150);
+  --color-surface: oklch(0.258 0.014 150);
+  --color-border: oklch(0.345 0.018 150);
+  --color-border-strong: oklch(0.420 0.020 150);
+
+  --color-text-primary: oklch(0.930 0.012 145);
+  --color-text-secondary: oklch(0.720 0.018 150);
+  --color-text-tertiary: oklch(0.580 0.018 150);
+
+  --color-primary: oklch(0.680 0.110 150);
+  --color-primary-hover: oklch(0.750 0.100 150);
+  --color-primary-subtle: oklch(0.320 0.045 150);
+  --color-on-primary: oklch(0.185 0.012 150);
+  --color-highlight: oklch(0.800 0.115 82);
+  --color-highlight-strong: oklch(0.860 0.100 84);
+  --color-positive: oklch(0.720 0.095 145);
+  --color-danger: oklch(0.680 0.150 28);
+
+  --cuisine-british: oklch(0.470 0.055 42);
+  --cuisine-spanish: oklch(0.470 0.060 32);
+  --cuisine-italian: oklch(0.470 0.060 128);
+  --cuisine-european: oklch(0.480 0.045 250);
+  --cuisine-thai: oklch(0.490 0.070 82);
+  --cuisine-indian: oklch(0.470 0.070 28);
+  --cuisine-easian: oklch(0.470 0.060 300);
+  --cuisine-mideast: oklch(0.480 0.060 60);
+  --cuisine-african: oklch(0.480 0.065 70);
+  --cuisine-seafood: oklch(0.470 0.055 200);
+  --cuisine-other: oklch(0.420 0.018 145);
+
+  --shadow-sm: 0 1px 3px oklch(0 0 0 / 0.35);
+  --shadow-md: 0 8px 24px -12px oklch(0 0 0 / 0.55);
+  --shadow-lg: 0 30px 60px -22px oklch(0 0 0 / 0.7),
+               0 4px 14px -8px oklch(0 0 0 / 0.5);
+}
