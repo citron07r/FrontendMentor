@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tastemap — Rank where you actually eat</title>
+  <meta name="description" content="Tastemap: a personal, honestly-ranked map of where you eat. No star ratings — just your true ranking, one comparison at a time.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2a11 11 0 0 0-11 11c0 8 11 17 11 17s11-9 11-17A11 11 0 0 0 16 2z' fill='%2343794F'/%3E%3Ccircle cx='16' cy='13' r='5' fill='%23F3F6EF'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-view="map">
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="app-header">
+    <div class="brand">
+      <p class="wordmark">Tastemap</p>
+      <p class="tagline">Star ratings are useless. Rank where you actually eat.</p>
+    </div>
+    <nav class="app-actions" aria-label="App actions">
+      <button type="button" id="theme-toggle" class="btn btn-ghost" aria-pressed="false">
+        <span aria-hidden="true" class="theme-icon">◐</span> Theme
+      </button>
+      <button type="button" id="add-place" class="btn btn-primary">+ Add place</button>
+    </nav>
+  </header>
+
+  <div class="view-tabs" role="tablist" aria-label="Switch view">
+    <button type="button" role="tab" id="tab-map" class="view-tab" aria-selected="true" data-view="map">Map</button>
+    <button type="button" role="tab" id="tab-list" class="view-tab" aria-selected="false" data-view="list">List</button>
+  </div>
+
+  <main id="main" class="app-main">
+    <section class="map-panel" aria-label="Map of your places">
+      <div id="map" aria-label="Interactive map of your restaurants. Pins are also reachable through the ranked list."></div>
+      <div id="map-notice" class="map-notice" role="alert" hidden>
+        <p>Couldn't load the map tiles — your list still works.</p>
+        <button type="button" id="map-retry" class="btn btn-ghost">Retry</button>
+      </div>
+      <div class="map-legend" aria-hidden="true">
+        <span class="legend-item"><span class="legend-pin legend-pin-ranked">1</span> Been &amp; ranked</span>
+        <span class="legend-item"><span class="legend-pin legend-pin-want">★</span> Want to try</span>
+      </div>
+    </section>
+
+    <aside class="rail" aria-label="Your ranked places">
+      <div class="filters" role="search">
+        <label class="field field-search">
+          <span class="field-label">Search</span>
+          <input type="search" id="filter-q" placeholder="Name, cuisine, area, tag…" autocomplete="off">
+        </label>
+        <div class="filter-row">
+          <fieldset class="status-filter">
+            <legend class="visually-hidden">Filter by status</legend>
+            <button type="button" class="chip" data-status="all" aria-pressed="true">All</button>
+            <button type="button" class="chip" data-status="been" aria-pressed="false">Been</button>
+            <button type="button" class="chip" data-status="want" aria-pressed="false">Want to try</button>
+          </fieldset>
+          <label class="field">
+            <span class="field-label">Cuisine</span>
+            <select id="filter-cuisine"><option value="all">All cuisines</option></select>
+          </label>
+          <label class="field">
+            <span class="field-label">Price</span>
+            <select id="filter-price">
+              <option value="all">Any price</option>
+              <option value="1">£ Cheap eats</option>
+              <option value="2">££ Mid</option>
+              <option value="3">£££ Pricey</option>
+              <option value="4">££££ Splurge</option>
+            </select>
+          </label>
+          <button type="button" id="filter-clear" class="btn btn-ghost">Clear all</button>
+        </div>
+        <p id="result-count" class="result-count" role="status" aria-live="polite"></p>
+      </div>
+
+      <div class="rail-scroll">
+        <section aria-labelledby="ranked-heading">
+          <h2 id="ranked-heading" class="rail-heading">Your top tables</h2>
+          <ol id="ranked-list" class="place-list ranked-list"></ol>
+          <p id="ranked-empty" class="empty-state" hidden>No ranked places yet. Mark somewhere as “I’ve been” and it’ll earn its place here.</p>
+        </section>
+        <section aria-labelledby="want-heading">
+          <h2 id="want-heading" class="rail-heading">Want to try</h2>
+          <ul id="want-list" class="place-list want-list"></ul>
+          <p id="want-empty" class="empty-state" hidden>Nothing on the wishlist. Add a place you’ve been meaning to try.</p>
+        </section>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Comparison duel -->
+  <div id="duel-backdrop" class="backdrop" hidden>
+    <div class="duel-card" role="dialog" aria-modal="true" aria-labelledby="duel-title" aria-describedby="duel-sub">
+      <p id="duel-progress" class="duel-progress" aria-live="polite">Question 1 of ~5</p>
+      <h2 id="duel-title" class="duel-title">Which was better?</h2>
+      <p id="duel-sub" class="duel-sub"></p>
+      <div class="duel-options">
+        <button type="button" id="duel-a" class="duel-option"></button>
+        <div class="duel-vs" aria-hidden="true">vs</div>
+        <button type="button" id="duel-b" class="duel-option"></button>
+      </div>
+      <div class="duel-actions">
+        <button type="button" id="duel-tie" class="btn btn-ghost">Too close to call <kbd>T</kbd></button>
+        <button type="button" id="duel-bail" class="btn btn-ghost">Finish later <kbd>Esc</kbd></button>
+      </div>
+      <p class="duel-hint">Press <kbd>←</kbd> or <kbd>→</kbd> to choose, <kbd>T</kbd> for a tie.</p>
+    </div>
+  </div>
+
+  <!-- Place detail sheet -->
+  <div id="sheet-backdrop" class="backdrop" hidden>
+    <div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-name"></div>
+  </div>
+
+  <!-- Add / edit place form -->
+  <div id="form-backdrop" class="backdrop" hidden>
+    <div class="sheet form-sheet" role="dialog" aria-modal="true" aria-labelledby="form-title">
+      <h2 id="form-title" class="sheet-title">Add a place</h2>
+      <form id="place-form" novalidate>
+        <label class="field">
+          <span class="field-label">Name <span class="req" aria-hidden="true">*</span></span>
+          <input type="text" id="f-name" name="name" required aria-required="true" autocomplete="off">
+          <span class="field-error" id="f-name-error" role="alert" hidden>Give the place a name.</span>
+        </label>
+        <div class="form-grid">
+          <label class="field">
+            <span class="field-label">Cuisine</span>
+            <input type="text" id="f-cuisine" name="cuisine" placeholder="e.g. Italian" autocomplete="off">
+          </label>
+          <label class="field">
+            <span class="field-label">Cuisine group</span>
+            <select id="f-cuisine-group" name="cuisineGroup"></select>
+          </label>
+          <label class="field">
+            <span class="field-label">Specialty</span>
+            <input type="text" id="f-specialty" name="specialty" placeholder="e.g. Pasta" autocomplete="off">
+          </label>
+          <label class="field">
+            <span class="field-label">Area</span>
+            <input type="text" id="f-area" name="area" placeholder="e.g. Soho" autocomplete="off">
+          </label>
+          <label class="field">
+            <span class="field-label">Price level</span>
+            <select id="f-price" name="priceLevel">
+              <option value="">Unknown</option>
+              <option value="1">£ — Cheap eats</option>
+              <option value="2">££ — Mid</option>
+              <option value="3">£££ — Pricey</option>
+              <option value="4">££££ — Splurge</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label">Website</span>
+            <input type="url" id="f-website" name="website" placeholder="https://…" autocomplete="off">
+          </label>
+          <label class="field">
+            <span class="field-label">Latitude</span>
+            <input type="number" id="f-lat" name="lat" step="any" placeholder="51.5155">
+          </label>
+          <label class="field">
+            <span class="field-label">Longitude</span>
+            <input type="number" id="f-lng" name="lng" step="any" placeholder="-0.0980">
+          </label>
+        </div>
+        <label class="field">
+          <span class="field-label">Address</span>
+          <input type="text" id="f-address" name="address" autocomplete="off">
+        </label>
+        <label class="field">
+          <span class="field-label">Tags <span class="field-hint">(comma separated)</span></span>
+          <input type="text" id="f-tags" name="tags" placeholder="date-night, solo-friendly" autocomplete="off">
+        </label>
+        <label class="field">
+          <span class="field-label">Your note</span>
+          <textarea id="f-note" name="note" rows="3" placeholder="What’s the move here?"></textarea>
+        </label>
+        <fieldset class="status-choice">
+          <legend>Status <span class="req" aria-hidden="true">*</span></legend>
+          <label class="radio"><input type="radio" name="status" value="want" checked> Want to try</label>
+          <label class="radio"><input type="radio" name="status" value="been"> Been — rank it</label>
+        </fieldset>
+        <div class="form-actions">
+          <button type="button" id="form-cancel" class="btn btn-ghost">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="form-submit">Save place</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="announcer" class="visually-hidden" role="status" aria-live="polite"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="script.js"></script>
+</body>
+</html>
