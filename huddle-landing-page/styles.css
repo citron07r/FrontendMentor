@@ -50,7 +50,7 @@ body {
   transition: transform 0.2s ease;
 }
 
-.skip-link:focus {
+.skip-link:focus-visible {
   transform: translateY(0);
   outline: 2px solid var(--magenta-400);
   outline-offset: 2px;

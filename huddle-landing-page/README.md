@@ -74,7 +74,7 @@ The social icons are inline SVG with `fill: currentColor`, so a single `color` c
 
 Interactive elements share one accent colour for hover and focus, and `:focus-visible` adds an offset outline on top of that colour change, so keyboard users get a visible ring without mouse users seeing one on click.
 
-A skip link sits before the header so keyboard users can jump past the logo straight to `#main`. It uses `:focus` rather than `:focus-visible`, because a skip link should appear for any focus that reaches it, and `main` carries `tabindex="-1"` so the jump actually moves focus in every browser.
+A skip link sits before the header so keyboard users can jump past the logo straight to `#main`, and `main` carries `tabindex="-1"` so the jump actually moves focus rather than only scrolling. The link reveals itself on `:focus-visible`, which keeps it hidden from a mouse user who happens to click where it sits while leaving it available to anyone arriving by keyboard.
 
 Once focus lands there, `main:focus-visible` draws an accent outline so the reader can see where they arrived. Suppressing that outline would have made the skip link move focus invisibly; scoping the style to `:focus-visible` keeps the ring for keyboard users without showing it to anyone who clicks inside the section with a mouse.
 
