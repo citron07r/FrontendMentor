@@ -50,8 +50,8 @@ Then visit http://localhost:8000/hotel-booking-confirmation/.
 
 ### Features
 
-- **Copy the wifi password** — the button writes to the clipboard, swaps its label to "Copied", and reverts after two seconds. Falls back to a hidden textarea and `document.execCommand` where the Clipboard API is unavailable.
-- **Off-canvas menu** — the hamburger opens the sidebar, moves focus to its close button, and shows a scrim. Escape, the close button, the scrim, and choosing a nav link all close it and return focus to the hamburger.
+- **Copy the wifi password** — the button writes to the clipboard, swaps its label to "Copied", and reverts after two seconds. Where the Clipboard API is unavailable or refused, it falls back to a hidden textarea and `document.execCommand`, and reports "Copy failed" if that does not succeed either.
+- **Off-canvas menu** — the hamburger opens the sidebar, moves focus to its close button, and shows a scrim. Escape, the close button, the scrim, and choosing a nav link all close it and return focus to the hamburger. While the panel is off-screen it is marked `inert` and `aria-hidden`, so its seven links and buttons leave the tab order instead of being reachable but invisible.
 
 ### What I learned
 
@@ -66,6 +66,8 @@ The fix is one rule that restores the attribute's meaning at the same specificit
 ```
 
 The lesson generalises: any time a class sets `display` on an element that also relies on `hidden`, the attribute stops working, and the failure is easy to miss because the markup reads as if it is correct.
+
+Moving an element off-screen with `transform` hides it from sight only. The sidebar's links stayed in the tab order at mobile widths, so a keyboard user pressing Tab from the hamburger walked through five nav links and a close button that were nowhere on screen. Toggling `inert` alongside the open state removes them from the tab order and the accessibility tree while the panel is away, and restores them when it slides in.
 
 ### Continued development
 
