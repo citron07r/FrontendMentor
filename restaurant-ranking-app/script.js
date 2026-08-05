@@ -32,6 +32,17 @@ const byId = (id) => places.find((p) => p.id === id);
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Escaping alone does not make a URL safe to put in href: "javascript:…"
+// survives it untouched and runs on click. Only http(s) links are rendered.
+function safeUrl(value) {
+  try {
+    const url = new URL(String(value ?? '').trim(), location.href);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 function announce(msg) {
   const el = $('#announcer');
   el.textContent = '';
@@ -48,23 +59,46 @@ function saveData() {
   }
 }
 
-async function loadData() {
+function readSaved() {
   const saved = localStorage.getItem(STORAGE_KEY);
-  // Meta always comes from the sample file (center, zoom, cuisine groups).
-  const res = await fetch(DATA_URL);
-  if (!res.ok) throw new Error(`Failed to load ${DATA_URL}: ${res.status}`);
-  const data = await res.json();
-  meta = data.meta;
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      places = Array.isArray(parsed.places) ? parsed.places : data.places;
-      comparisons = Array.isArray(parsed.comparisons) ? parsed.comparisons : data.comparisons;
-      return;
-    } catch {
-      /* fall through to sample data */
-    }
+  if (!saved) return null;
+  try {
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed.places)) return null;
+    return {
+      places: parsed.places,
+      comparisons: Array.isArray(parsed.comparisons) ? parsed.comparisons : [],
+    };
+  } catch {
+    return null;
   }
+}
+
+// Saved places are the source of truth once they exist, so a return visit works
+// offline. The sample file is fetched for meta (map centre, cuisine groups) and
+// as the seed on a first visit — but a failed fetch must never hide places the
+// visitor already has.
+async function loadData() {
+  const saved = readSaved();
+
+  let data = null;
+  try {
+    const res = await fetch(DATA_URL);
+    if (!res.ok) throw new Error(`Failed to load ${DATA_URL}: ${res.status}`);
+    data = await res.json();
+  } catch (err) {
+    if (!saved) throw err;
+    announce('Offline — showing your saved places.');
+  }
+
+  if (data?.meta) meta = data.meta;
+
+  if (saved) {
+    places = saved.places;
+    comparisons = saved.comparisons;
+    return;
+  }
+
   places = data.places;
   comparisons = data.comparisons;
   saveData();
@@ -109,6 +143,7 @@ function visiblePlaces(list) {
    ============================================================ */
 let map = null;
 let tileLayer = null;
+let clusterLayer = null;
 const markers = new Map(); // placeId -> L.Marker
 let tileFailed = false;
 
@@ -142,6 +177,18 @@ function initMap() {
   }
   map = L.map('map', { zoomControl: true }).setView([meta.center.lat, meta.center.lng], meta.defaultZoom);
   addTileLayer();
+
+  // Soho alone holds seven places within a few hundred metres, so pins are
+  // grouped through a cluster layer rather than added to the map directly.
+  // Without the plugin the markers still render — they just stop clustering.
+  clusterLayer = typeof L.markerClusterGroup === 'function'
+    ? L.markerClusterGroup({
+        showCoverageOnHover: false,
+        maxClusterRadius: 44,
+        spiderfyDistanceMultiplier: 1.4,
+      })
+    : L.layerGroup();
+  clusterLayer.addTo(map);
   $('#map-retry').addEventListener('click', () => {
     tileFailed = false;
     $('#map-notice').hidden = true;
@@ -177,7 +224,7 @@ function renderMarkers() {
   const visible = new Set(visiblePlaces(places).map((p) => p.id));
   for (const [id, marker] of markers) {
     if (!visible.has(id) || !byId(id)) {
-      marker.remove();
+      clusterLayer.removeLayer(marker);
       markers.delete(id);
     }
   }
@@ -194,7 +241,7 @@ function renderMarkers() {
       marker.on('click', () => selectPlace(place.id, { source: 'map' }));
       marker.on('mouseover', () => highlightRow(place.id, true));
       marker.on('mouseout', () => highlightRow(place.id, false));
-      marker.addTo(map);
+      clusterLayer.addLayer(marker);
       markers.set(place.id, marker);
     } else {
       marker.setIcon(pinIcon(place));
@@ -320,7 +367,16 @@ function selectPlace(id, { source } = {}) {
   }
 
   if (map && typeof place.lat === 'number') {
-    map.panTo([place.lat, place.lng], { animate: true });
+    const marker = markers.get(id);
+    // A clustered pin has no element until its cluster opens, so picking a
+    // place from the list has to expand the cluster, not just pan over it.
+    if (marker && typeof clusterLayer?.zoomToShowLayer === 'function') {
+      clusterLayer.zoomToShowLayer(marker, () => {
+        marker.getElement()?.classList.add('pin-selected');
+      });
+    } else {
+      map.panTo([place.lat, place.lng], { animate: true });
+    }
   }
   if (source === 'map') {
     const row = document.querySelector(`.place-row[data-id="${CSS.escape(id)}"]`);
@@ -336,6 +392,7 @@ function openSheet(id, source) {
 
   const ranked = place.status === 'ranked';
   const price = priceText(place.priceLevel);
+  const website = safeUrl(place.website);
   const facts = [];
   if (ranked && place.rank) facts.push(`<li class="fact fact-rank">Ranked #${place.rank}</li>`);
   if (!ranked) facts.push('<li class="fact fact-want">Want to try</li>');
@@ -356,7 +413,7 @@ function openSheet(id, source) {
     ${place.note ? `<blockquote class="sheet-note">${esc(place.note)}</blockquote>` : ''}
     <p class="sheet-address">
       ${esc(place.address || '')}
-      ${place.website ? ` · <a href="${esc(place.website)}" target="_blank" rel="noopener">Website</a>` : ''}
+      ${website ? ` · <a href="${esc(website)}" target="_blank" rel="noopener noreferrer">Website</a>` : ''}
     </p>
     <div class="sheet-actions">
       ${ranked
