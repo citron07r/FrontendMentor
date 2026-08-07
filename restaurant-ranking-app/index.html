@@ -93,8 +93,8 @@
   </main>
 
   <!-- Comparison duel -->
-  <div id="duel-backdrop" class="backdrop" hidden>
-    <div class="duel-card" role="dialog" aria-modal="true" aria-labelledby="duel-title" aria-describedby="duel-sub">
+  <dialog id="duel-backdrop" class="backdrop" aria-labelledby="duel-title" aria-describedby="duel-sub">
+    <div class="duel-card">
       <p id="duel-progress" class="duel-progress" aria-live="polite">Question 1 of ~5</p>
       <h2 id="duel-title" class="duel-title">Which was better?</h2>
       <p id="duel-sub" class="duel-sub"></p>
@@ -109,16 +109,16 @@
       </div>
       <p class="duel-hint">Press <kbd>←</kbd> or <kbd>→</kbd> to choose, <kbd>T</kbd> for a tie.</p>
     </div>
-  </div>
+  </dialog>
 
   <!-- Place detail sheet -->
-  <div id="sheet-backdrop" class="backdrop" hidden>
-    <div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-name"></div>
-  </div>
+  <dialog id="sheet-backdrop" class="backdrop" aria-labelledby="sheet-name">
+    <div id="sheet" class="sheet"></div>
+  </dialog>
 
   <!-- Add / edit place form -->
-  <div id="form-backdrop" class="backdrop" hidden>
-    <div class="sheet form-sheet" role="dialog" aria-modal="true" aria-labelledby="form-title">
+  <dialog id="form-backdrop" class="backdrop" aria-labelledby="form-title">
+    <div class="sheet form-sheet">
       <h2 id="form-title" class="sheet-title">Add a place</h2>
       <form id="place-form" novalidate>
         <label class="field">
@@ -189,7 +189,7 @@
         </div>
       </form>
     </div>
-  </div>
+  </dialog>
 
   <div id="announcer" class="visually-hidden" role="status" aria-live="polite"></div>
 

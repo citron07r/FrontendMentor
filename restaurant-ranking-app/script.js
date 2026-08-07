@@ -23,7 +23,6 @@ const filters = { status: 'all', cuisine: 'all', price: 'all', q: '' };
 let selectedId = null;
 let duel = null; // { placeId, low, high, question, total, sides: {left, right} }
 let editingId = null;
-let lastFocus = null;
 let placedId = null; // row to animate after next render
 
 /* ---------- tiny helpers ---------- */
@@ -388,7 +387,6 @@ function selectPlace(id, { source } = {}) {
 function openSheet(id, source) {
   const place = byId(id);
   if (!place) return;
-  lastFocus = document.activeElement;
 
   const ranked = place.status === 'ranked';
   const price = priceText(place.priceLevel);
@@ -437,15 +435,19 @@ function openSheet(id, source) {
     else markBeen(id);
   });
 
-  $('#sheet-backdrop').hidden = false;
-  trapFocus($('#sheet'));
+  $('#sheet-backdrop').showModal();
   $('#sheet').querySelector('[data-action="close"]').focus();
   announce(`${place.name}. ${ranked ? `Ranked number ${place.rank}.` : 'On your want-to-try list.'}`);
 }
 
 function closeSheet() {
-  $('#sheet-backdrop').hidden = true;
-  releaseFocus();
+  const dialog = $('#sheet-backdrop');
+  if (dialog.open) dialog.close();
+}
+
+// Runs however the sheet was dismissed: the close button, a backdrop click, or
+// Escape handled by the browser.
+function onSheetClosed() {
   selectedId = null;
   document.querySelectorAll('.place-row[aria-current="true"]').forEach((r) => r.setAttribute('aria-current', 'false'));
   for (const marker of markers.values()) marker.getElement()?.classList.remove('pin-selected');
@@ -500,10 +502,12 @@ function startDuel(placeId) {
     question: 1,
     total: Math.max(1, Math.ceil(Math.log2(ranked.length + 1))),
   };
-  lastFocus = document.activeElement;
   renderDuel();
-  $('#duel-backdrop').hidden = false;
-  trapFocus($('#duel-backdrop .duel-card'));
+  const duelDialog = $('#duel-backdrop');
+  // returnValue survives from the previous duel, so clear it before opening:
+  // a stale 'placed' would make the close handler skip the bail path.
+  duelDialog.returnValue = '';
+  duelDialog.showModal();
   $('#duel-a').focus();
 }
 
@@ -576,8 +580,8 @@ function finishDuel() {
   insertAtRank(place, duel.low);
   const finalRank = place.rank;
   duel = null;
-  $('#duel-backdrop').hidden = true;
-  releaseFocus();
+  // 'placed' tells the close handler this was a completed ranking, not a bail.
+  $('#duel-backdrop').close('placed');
   saveData();
   renderAll();
   placedId = place.id;
@@ -585,14 +589,14 @@ function finishDuel() {
   announce(`${place.name} placed at number ${finalRank}.`);
 }
 
+// Escape and "Finish later" both land here, via the dialog's close event.
 function bailDuel() {
+  if (!duel) return;
   // Keep the work: slot the challenger at the current best-guess position.
   const place = byId(duel.placeId);
   insertAtRank(place, duel.low);
   const tentative = place.rank;
   duel = null;
-  $('#duel-backdrop').hidden = true;
-  releaseFocus();
   saveData();
   renderAll();
   announce(`${place.name} tentatively placed at number ${tentative}. Re-rank it anytime from its details.`);
@@ -623,7 +627,6 @@ function setNameError(hasError) {
 
 function openForm(id = null) {
   editingId = id;
-  lastFocus = document.activeElement;
   const form = $('#place-form');
   form.reset();
   setNameError(false);
@@ -654,15 +657,13 @@ function openForm(id = null) {
     groupSel.value = 'other';
   }
 
-  $('#form-backdrop').hidden = false;
-  trapFocus($('#form-backdrop .sheet'));
+  $('#form-backdrop').showModal();
   $('#f-name').focus();
 }
 
 function closeForm() {
-  $('#form-backdrop').hidden = true;
-  editingId = null;
-  releaseFocus();
+  const dialog = $('#form-backdrop');
+  if (dialog.open) dialog.close();
 }
 
 function submitForm(e) {
@@ -745,42 +746,6 @@ function submitForm(e) {
 /* ============================================================
    Focus trapping for dialogs
    ============================================================ */
-let trapContainer = null;
-function trapFocus(container) {
-  trapContainer = container;
-  document.addEventListener('keydown', trapHandler, true);
-}
-function releaseFocus() {
-  trapContainer = null;
-  document.removeEventListener('keydown', trapHandler, true);
-  if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
-  lastFocus = null;
-}
-function trapHandler(e) {
-  if (!trapContainer) return;
-  if (e.key === 'Escape') {
-    e.preventDefault();
-    if (!$('#duel-backdrop').hidden) bailDuel();
-    else if (!$('#sheet-backdrop').hidden) closeSheet();
-    else if (!$('#form-backdrop').hidden) closeForm();
-    return;
-  }
-  if (e.key !== 'Tab') return;
-  const focusables = trapContainer.querySelectorAll(
-    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-  );
-  if (!focusables.length) return;
-  const first = focusables[0];
-  const last = focusables[focusables.length - 1];
-  if (e.shiftKey && document.activeElement === first) {
-    e.preventDefault();
-    last.focus();
-  } else if (!e.shiftKey && document.activeElement === last) {
-    e.preventDefault();
-    first.focus();
-  }
-}
-
 /* ============================================================
    Filters
    ============================================================ */
@@ -892,7 +857,7 @@ async function boot() {
   $('#duel-a').addEventListener('click', () => duel && answerDuel('left'));
   $('#duel-b').addEventListener('click', () => duel && answerDuel('right'));
   $('#duel-tie').addEventListener('click', () => duel && answerDuel('tie'));
-  $('#duel-bail').addEventListener('click', () => duel && bailDuel());
+  $('#duel-bail').addEventListener('click', () => duel && $('#duel-backdrop').close());
 
   document.addEventListener('keydown', (e) => {
     if (!duel) return;
@@ -907,6 +872,15 @@ async function boot() {
   });
   $('#form-backdrop').addEventListener('click', (e) => {
     if (e.target === e.currentTarget) closeForm();
+  });
+
+  // Cleanup hangs off 'close', so it runs no matter how a dialog was dismissed:
+  // a button, a backdrop click, or the Escape the browser handles for us.
+  $('#sheet-backdrop').addEventListener('close', onSheetClosed);
+  $('#form-backdrop').addEventListener('close', () => { editingId = null; });
+  $('#duel-backdrop').addEventListener('close', (e) => {
+    // Anything other than a completed placement means the visitor stepped away.
+    if (e.currentTarget.returnValue !== 'placed') bailDuel();
   });
 }
 

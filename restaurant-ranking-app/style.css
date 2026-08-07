@@ -464,15 +464,35 @@ kbd {
 .row-placed { animation: slot-in 600ms ease; }
 
 /* ---- Backdrops, dialogs, sheet ------------------------------- */
+/* The overlays are native <dialog> elements: the browser supplies modality,
+   the focus trap, Escape, and focus return. The element itself is stripped
+   back to a transparent full-screen flex container so the card inside keeps
+   its own sizing, and the dimming moves to ::backdrop. */
 .backdrop {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: oklch(0.262 0.024 155 / 0.45);
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  overflow: visible;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-4);
+}
+
+.backdrop:not([open]) {
+  display: none;
+}
+
+.backdrop::backdrop {
+  background: oklch(0.262 0.024 155 / 0.45);
 }
 
 .duel-card {
