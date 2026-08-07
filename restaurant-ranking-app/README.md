@@ -63,6 +63,10 @@ The lesson is about failure mode, not about tokens. A stylesheet that consumes v
 
 The comparison flow was the other thing worth getting right. A naive implementation compares a new place against every ranked place, which is fine at 14 and miserable at 100. Treating the ranked list as sorted and binary-searching the insertion point turns that into a logarithmic number of questions — the "Question 1 of ~4" estimate the duel shows is `ceil(log2(n))`.
 
+The three overlays are native `<dialog>` elements opened with `showModal()`. That hands modality, the focus trap, Escape, and focus return to the browser, and let roughly forty lines of hand-rolled trapping go. It also puts the behaviour in the markup rather than in a script only a reader can find: `dialog.matches(':modal')` is the browser's own answer to "is this really a modal", which no amount of `aria-modal="true"` on a `div` can give you.
+
+The migration had one trap of its own. `dialog.returnValue` persists between `showModal()` calls, and the duel uses it to tell a finished ranking from an abandoned one. The second duel therefore still read `'placed'` from the first, skipped the bail path, and left a place ranked with no rank. Clearing `returnValue` when the dialog opens fixes it — worth remembering that the property is sticky, not per-session.
+
 Two smaller lessons came from re-reading the data layer. Escaping a URL for HTML does nothing about its scheme: `javascript:alert(1)` survives `esc()` untouched and runs when the link is clicked, so the website field is now parsed with `new URL()` and only rendered when the protocol is `http:` or `https:`. And the seed fetch used to run before saved data was consulted, which meant a second visit without a network hid places the visitor already had — saved data is now read first, and the fetch only has to succeed on a genuine first visit.
 
 ### Continued development
