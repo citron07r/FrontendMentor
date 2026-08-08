@@ -24,16 +24,16 @@ import {
 (function () {
   /* ============ Constants ============ */
 
-  var STORAGE_KEY = 'expense-splitter:data';
-  var THEME_KEY = 'expense-splitter:theme';
-  var SELECTED_KEY = 'expense-splitter:selected-group';
+  const STORAGE_KEY = 'expense-splitter:data';
+  const THEME_KEY = 'expense-splitter:theme';
+  const SELECTED_KEY = 'expense-splitter:selected-group';
 
-  var CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'INR', 'MXN'];
-  var CATEGORIES = [
+  const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'INR', 'MXN'];
+  const CATEGORIES = [
     'Accommodation', 'Entertainment', 'Food & Drink', 'Groceries',
     'Housing', 'Other', 'Shopping', 'Transport', 'Utilities'
   ];
-  var CATEGORY_COLORS = {
+  const CATEGORY_COLORS = {
     'Accommodation': '#8b5cf6',
     'Entertainment': '#ec4899',
     'Food & Drink': '#f59e0b',
@@ -47,18 +47,18 @@ import {
   /* Live rates come from Frankfurter (ECB data, no API key, so nothing secret
      ships in a static build). The per-USD figures below are the fallback when
      the network is unavailable, so expense entry is never blocked. */
-  var RATES_URL = 'https://api.frankfurter.dev/v1/latest?base=USD';
-  var RATES_CACHE_KEY = 'expense-splitter:rates';
-  var RATES_MAX_AGE_MS = 12 * 60 * 60 * 1000; /* rates move slowly; refetch twice a day */
-  var RATE_PER_USD = { USD: 1, EUR: 0.92, GBP: 0.79, JPY: 149, CAD: 1.36, AUD: 1.52, CHF: 0.88, CNY: 7.2, INR: 83, MXN: 18.2 };
-  var AVATAR_PALETTE = ['#5b8def', '#36d29a', '#e3b341', '#f2606a', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
+  const RATES_URL = 'https://api.frankfurter.dev/v1/latest?base=USD';
+  const RATES_CACHE_KEY = 'expense-splitter:rates';
+  const RATES_MAX_AGE_MS = 12 * 60 * 60 * 1000; /* rates move slowly; refetch twice a day */
+  const RATE_PER_USD = { USD: 1, EUR: 0.92, GBP: 0.79, JPY: 149, CAD: 1.36, AUD: 1.52, CHF: 0.88, CNY: 7.2, INR: 83, MXN: 18.2 };
+  const AVATAR_PALETTE = ['#5b8def', '#36d29a', '#e3b341', '#f2606a', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
 
 
   /* ============ State ============ */
 
-  var state = null; /* { groups: Group[] } */
-  var selectedGroupId = null;
-  var expenseFilters = { category: 'all', member: 'all', from: '', to: '' };
+  let state = null; /* { groups: Group[] } */
+  let selectedGroupId = null;
+  let expenseFilters = { category: 'all', member: 'all', from: '', to: '' };
 
   function resetExpenseFilters() {
     expenseFilters = { category: 'all', member: 'all', from: '', to: '' };
@@ -72,6 +72,9 @@ import {
     }
   }
 
+  /* Resolves to { ok: true } when there is usable state, or { ok: false, error }
+     when there is not. Deliberately never rejects: leaving a caller to remember
+     a .catch is how a failed seed fetch turns into a blank screen. */
   function loadState() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -79,18 +82,29 @@ import {
         var parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.groups) && parsed.groups.length) {
           state = parsed;
-          return Promise.resolve();
+          return Promise.resolve({ ok: true });
         }
       }
     } catch (e) { /* corrupted storage: reseed from sample data */ }
+
     return fetch('data/sample-groups.json')
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
       })
       .then(function (data) {
+        if (!data || !Array.isArray(data.groups) || !data.groups.length) {
+          throw new Error('Sample data contained no groups');
+        }
         state = { groups: data.groups };
         saveState();
+        return { ok: true };
+      })
+      .catch(function (error) {
+        /* An empty shape rather than null, so every renderer downstream has
+           something valid to read while the recovery message is shown. */
+        state = { groups: [] };
+        return { ok: false, error: error };
       });
   }
 
@@ -112,7 +126,7 @@ import {
 
   /* ============ Money & formatting ============ */
 
-  var formatters = {};
+  const formatters = {};
   function formatMoney(amount, currency) {
     var key = currency || 'USD';
     if (!formatters[key]) {
@@ -176,8 +190,10 @@ import {
 
   function avatarHtml(member, large) {
     var initial = (member.name || '?').trim().charAt(0).toUpperCase();
-    return '<span class="avatar' + (large ? ' avatar-lg' : '') + '" aria-hidden="true" style="background:' +
-      escapeHtml(member.avatarColor) + ';color:' + avatarTextColor(member.avatarColor) + '">' +
+    /* Per-member colour is data, so it has to reach CSS somehow; passing it as
+       custom properties keeps the actual declarations in the stylesheet. */
+    return '<span class="avatar' + (large ? ' avatar-lg' : '') + '" aria-hidden="true" style="--avatar-bg:' +
+      escapeHtml(member.avatarColor) + ';--avatar-fg:' + avatarTextColor(member.avatarColor) + '">' +
       escapeHtml(initial) + '</span>';
   }
 
@@ -542,10 +558,10 @@ import {
     var rows = Object.keys(totals).sort(function (a, b) { return totals[b] - totals[a]; }).map(function (cat) {
       var share = total > 0 ? (totals[cat] / total) * 100 : 0;
       return '<li class="breakdown-row">' +
-        '<span class="breakdown-swatch" aria-hidden="true" style="background:' +
+        '<span class="breakdown-swatch" aria-hidden="true" style="--swatch-color:' +
         escapeHtml(CATEGORY_COLORS[cat] || CATEGORY_COLORS.Other) + '"></span>' +
         '<span class="breakdown-name">' + escapeHtml(cat) + '</span>' +
-        '<span class="breakdown-bar" aria-hidden="true"><span style="width:' + share.toFixed(1) + '%;background:' +
+        '<span class="breakdown-bar" aria-hidden="true"><span style="--bar-width:' + share.toFixed(1) + '%;--bar-color:' +
         escapeHtml(CATEGORY_COLORS[cat] || CATEGORY_COLORS.Other) + '"></span></span>' +
         '<span class="breakdown-amt">' + escapeHtml(formatMoney(roundTo(totals[cat], group.currency), group.currency)) +
         ' <span class="breakdown-pct">' + share.toFixed(0) + '%</span></span>' +
@@ -583,7 +599,7 @@ import {
 
     return '<li class="expense-item">' +
       '<button class="expense-main" type="button" data-action="toggle-expense" aria-expanded="false" aria-controls="detail-' + escapeHtml(e.id) + '">' +
-      '<span class="cat-dot" style="background:' + catColor + '" aria-hidden="true"></span>' +
+      '<span class="cat-dot" style="--dot-color:' + catColor + '" aria-hidden="true"></span>' +
       '<span class="expense-body">' +
       '<span class="expense-desc">' + escapeHtml(e.description) + '</span>' +
       '<span class="expense-sub">' + avatarHtml(payer) +
@@ -796,8 +812,8 @@ import {
      so the UI can say where a number came from. Rendering code only ever reads
      `rates`, never the network. */
 
-  var rates = { table: RATE_PER_USD, source: 'fallback', fetchedAt: null };
-  var rateGaps = []; /* currencies the provider did not return */
+  let rates = { table: RATE_PER_USD, source: 'fallback', fetchedAt: null };
+  let rateGaps = []; /* currencies the provider did not return */
 
   function readCachedRates() {
     try {
@@ -1101,7 +1117,8 @@ import {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(SELECTED_KEY);
     } catch (e) { /* ignore */ }
-    loadState().then(function () {
+    loadState().then(function (result) {
+      if (!result.ok) { announce('Could not restore the demo data.'); return; }
       selectedGroupId = state.groups.length ? state.groups[0].id : null;
       if (location.hash.indexOf('#/app') === 0) {
         route();
@@ -1116,7 +1133,7 @@ import {
 
   /* The sidebar only slides off-screen on narrow viewports; transform hides it
      visually but leaves its links tabbable, so inert has to track the state. */
-  var sidebarQuery = window.matchMedia('(max-width: 900px)');
+  const sidebarQuery = window.matchMedia('(max-width: 900px)');
 
   function syncSidebarState() {
     var sidebar = $('#sidebar');
@@ -1228,16 +1245,19 @@ import {
     syncSidebarState();
     sidebarQuery.addEventListener('change', syncSidebarState);
     $('#group-root').innerHTML = '<p class="loading-state">Loading your groups…</p>';
-    loadState()
-      .then(function () {
+    loadState().then(function (result) {
+      if (result.ok) {
         route();
-      })
-      .catch(function () {
-        $('#group-root').innerHTML = '<div class="empty-state"><h3>Couldn’t load the sample data</h3>' +
-          '<p>The file data/sample-groups.json could not be fetched. Serve the app over HTTP and reload.</p></div>';
-        location.hash = '#/app';
-        showApp();
-      });
+        return;
+      }
+      /* showApp() re-renders #group-root, so the message has to be written
+         after it or the render silently replaces the explanation with a
+         generic "no groups yet" empty state. */
+      location.hash = '#/app';
+      showApp();
+      $('#group-root').innerHTML = '<div class="empty-state"><h3>Couldn’t load the sample data</h3>' +
+        '<p>The file data/sample-groups.json could not be fetched. Serve the app over HTTP and reload.</p></div>';
+    });
   }
 
   if (document.readyState === 'loading') {
