@@ -77,9 +77,9 @@ import {
      a .catch is how a failed seed fetch turns into a blank screen. */
   function loadState() {
     try {
-      var raw = localStorage.getItem(STORAGE_KEY);
+      let raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        var parsed = JSON.parse(raw);
+        let parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.groups) && parsed.groups.length) {
           state = parsed;
           return Promise.resolve({ ok: true });
@@ -110,7 +110,7 @@ import {
 
   function findGroup(id) {
     if (!state) return null;
-    for (var i = 0; i < state.groups.length; i++) {
+    for (let i = 0; i < state.groups.length; i++) {
       if (state.groups[i].id === id) return state.groups[i];
     }
     return null;
@@ -128,7 +128,7 @@ import {
 
   const formatters = {};
   function formatMoney(amount, currency) {
-    var key = currency || 'USD';
+    let key = currency || 'USD';
     if (!formatters[key]) {
       try {
         formatters[key] = new Intl.NumberFormat('en-US', { style: 'currency', currency: key });
@@ -146,14 +146,14 @@ import {
   }
 
   function fullDate(iso) {
-    var d = new Date(iso);
+    let d = new Date(iso);
     return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
   function relativeDate(iso) {
-    var then = new Date(iso).getTime();
-    var now = Date.now();
-    var days = Math.floor((now - then) / 86400000);
+    const then = new Date(iso).getTime();
+    const now = Date.now();
+    const days = Math.floor((now - then) / 86400000);
     if (days <= 0) return 'today';
     if (days === 1) return 'yesterday';
     if (days < 7) return days + 'd ago';
@@ -163,7 +163,7 @@ import {
   }
 
   function memberById(group, id) {
-    for (var i = 0; i < group.members.length; i++) {
+    for (let i = 0; i < group.members.length; i++) {
       if (group.members[i].id === id) return group.members[i];
     }
     return { id: id, name: 'Unknown', avatarColor: '#8b94a6' };
@@ -174,22 +174,22 @@ import {
   }
 
   function displayName(group, id) {
-    var you = youMember(group);
+    let you = youMember(group);
     if (you && id === you.id) return 'you';
     return memberById(group, id).name;
   }
 
   function avatarTextColor(hex) {
-    var m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    let m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
     if (!m) return '#ffffff';
-    var n = parseInt(m[1], 16);
-    var r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-    var luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    const n = parseInt(m[1], 16);
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
     return luminance > 0.6 ? '#131a26' : '#ffffff';
   }
 
   function avatarHtml(member, large) {
-    var initial = (member.name || '?').trim().charAt(0).toUpperCase();
+    const initial = (member.name || '?').trim().charAt(0).toUpperCase();
     /* Per-member colour is data, so it has to reach CSS somehow; passing it as
        custom properties keeps the actual declarations in the stylesheet. */
     return '<span class="avatar' + (large ? ' avatar-lg' : '') + '" aria-hidden="true" style="--avatar-bg:' +
@@ -207,11 +207,11 @@ import {
   /* Deterministic rounding: split `amount` into integer currency units and
      distribute leftover units one by one, so splits always sum to the total. */
   function computeSplits(splitType, amount, currency, members, inputs) {
-    var unit = unitFor(currency);
-    var totalUnits = Math.round(amount / unit);
-    var ids = members.map(function (m) { return m.id; });
+    const unit = unitFor(currency);
+    const totalUnits = Math.round(amount / unit);
+    const ids = members.map(function (m) { return m.id; });
     if (!ids.length) return [];
-    var units, i;
+    let units, i;
 
     if (splitType === 'exact') {
       return members.map(function (m) {
@@ -242,7 +242,7 @@ import {
   function $(sel) { return document.querySelector(sel); }
 
   function announce(msg) {
-    var el = $('#announcer');
+    let el = $('#announcer');
     if (!el) return;
     el.textContent = '';
     setTimeout(function () { el.textContent = msg; }, 30);
@@ -254,7 +254,7 @@ import {
   function showError(el, msg, field) {
     if (!el) return;
 
-    var previous = el.invalidField;
+    const previous = el.invalidField;
     if (previous) {
       previous.removeAttribute('aria-invalid');
       if (previous.getAttribute('aria-describedby') === el.id) previous.removeAttribute('aria-describedby');
@@ -284,13 +284,13 @@ import {
   /* ============ Theme ============ */
 
   function effectiveTheme() {
-    var t = document.documentElement.dataset.theme;
+    const t = document.documentElement.dataset.theme;
     if (t === 'dark' || t === 'light') return t;
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
 
   function toggleTheme() {
-    var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+    const next = effectiveTheme() === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* ignore */ }
     announce(next === 'dark' ? 'Dark theme on' : 'Light theme on');
@@ -299,9 +299,9 @@ import {
   /* ============ Routing ============ */
 
   function route() {
-    var hash = location.hash || '#/';
+    const hash = location.hash || '#/';
     if (hash.indexOf('#/app') === 0) {
-      var m = /^#\/app\/g\/([\w-]+)/.exec(hash);
+      let m = /^#\/app\/g\/([\w-]+)/.exec(hash);
       if (m && findGroup(m[1]) && m[1] !== selectedGroupId) { selectedGroupId = m[1]; resetExpenseFilters(); }
       if (!findGroup(selectedGroupId)) selectedGroupId = state.groups.length ? state.groups[0].id : null;
       try { localStorage.setItem(SELECTED_KEY, selectedGroupId || ''); } catch (e) { /* ignore */ }
@@ -314,7 +314,7 @@ import {
   /* Both views ship their own <main>, and only one is visible at a time. The
      skip link has to follow, or it drops keyboard users into the hidden view. */
   function pointSkipLinkAt(id) {
-    var link = document.querySelector('.skip-link');
+    const link = document.querySelector('.skip-link');
     if (link) link.setAttribute('href', '#' + id);
   }
 
@@ -340,15 +340,15 @@ import {
   }
 
   function renderSidebar() {
-    var list = $('#group-list');
-    var html = '';
+    const list = $('#group-list');
+    let html = '';
     state.groups.forEach(function (g) {
-      var bal = computeBalances(g);
-      var you = youMember(g);
-      var net = you ? (bal[you.id] || 0) : 0;
-      var active = g.id === selectedGroupId;
-      var balClass = Math.abs(net) < EPSILON ? 'is-zero' : (net > 0 ? 'is-owed' : 'is-owe');
-      var balText = Math.abs(net) < EPSILON ? 'settled' : formatMoney(Math.abs(net), g.currency);
+      let bal = computeBalances(g);
+      let you = youMember(g);
+      let net = you ? (bal[you.id] || 0) : 0;
+      const active = g.id === selectedGroupId;
+      const balClass = Math.abs(net) < EPSILON ? 'is-zero' : (net > 0 ? 'is-owed' : 'is-owe');
+      const balText = Math.abs(net) < EPSILON ? 'settled' : formatMoney(Math.abs(net), g.currency);
       html += '<li><a class="group-item" href="#/app/g/' + escapeHtml(g.id) + '"' +
         (active ? ' aria-current="page"' : '') + '>' +
         '<span class="group-item-name">' + escapeHtml(g.name) + '</span>' +
@@ -359,8 +359,8 @@ import {
   }
 
   function renderGroup() {
-    var root = $('#group-root');
-    var group = currentGroup();
+    const root = $('#group-root');
+    let group = currentGroup();
     if (!group) {
       root.innerHTML = '<div class="empty-state"><h3>No groups yet</h3>' +
         '<p>Create your first group to start splitting expenses.</p>' +
@@ -373,9 +373,9 @@ import {
     $('#crumb-group').textContent = group.name;
     document.title = group.name + ' · Expense Splitter';
 
-    var bal = computeBalances(group);
-    var suggestions = suggestSettlements(group, bal);
-    var you = youMember(group);
+    let bal = computeBalances(group);
+    let suggestions = suggestSettlements(group, bal);
+    let you = youMember(group);
 
     root.innerHTML =
       '<div class="group-wrap">' +
@@ -394,7 +394,7 @@ import {
   }
 
   function groupHeadHtml(group) {
-    var total = group.expenses.reduce(function (a, e) { return a + e.amount * (e.exchangeRate || 1); }, 0);
+    let total = group.expenses.reduce(function (a, e) { return a + e.amount * (e.exchangeRate || 1); }, 0);
     return '<header class="group-head">' +
       '<h1 class="group-title">' + escapeHtml(group.name) + '</h1>' +
       (group.description ? '<p class="group-desc">' + escapeHtml(group.description) + '</p>' : '') +
@@ -409,17 +409,17 @@ import {
   }
 
   function balanceCardHtml(group, bal, you) {
-    var yourNet = you ? (bal[you.id] || 0) : 0;
-    var yourClass = Math.abs(yourNet) < EPSILON ? 'is-zero' : (yourNet > 0 ? 'is-owed' : 'is-owe');
-    var yourNote = Math.abs(yourNet) < EPSILON ? 'You are all settled up'
+    const yourNet = you ? (bal[you.id] || 0) : 0;
+    const yourClass = Math.abs(yourNet) < EPSILON ? 'is-zero' : (yourNet > 0 ? 'is-owed' : 'is-owe');
+    const yourNote = Math.abs(yourNet) < EPSILON ? 'You are all settled up'
       : (yourNet > 0 ? 'you are owed overall' : 'you owe overall');
 
-    var rows = group.members.map(function (m) {
-      var net = bal[m.id] || 0;
-      var cls = Math.abs(net) < EPSILON ? 'is-zero' : (net > 0 ? 'is-owed' : 'is-owe');
-      var sign = net > EPSILON ? '+' : (net < -EPSILON ? '−' : '');
-      var note = Math.abs(net) < EPSILON ? 'settled' : (net > 0 ? 'is owed' : 'owes');
-      var nameHtml = escapeHtml(m.name) + (you && m.id === you.id ? ' <span class="you-tag">(you)</span>' : '');
+    let rows = group.members.map(function (m) {
+      let net = bal[m.id] || 0;
+      const cls = Math.abs(net) < EPSILON ? 'is-zero' : (net > 0 ? 'is-owed' : 'is-owe');
+      const sign = net > EPSILON ? '+' : (net < -EPSILON ? '−' : '');
+      const note = Math.abs(net) < EPSILON ? 'settled' : (net > 0 ? 'is owed' : 'owes');
+      const nameHtml = escapeHtml(m.name) + (you && m.id === you.id ? ' <span class="you-tag">(you)</span>' : '');
       return '<li class="balance-row">' + avatarHtml(m) +
         '<span class="balance-row-name">' + nameHtml + '</span>' +
         '<span class="balance-row-amt">' +
@@ -449,10 +449,10 @@ import {
         '<span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg></span>' +
         'All settled up! Nothing left to square.</p></section>';
     }
-    var rows = suggestions.map(function (s) {
-      var from = memberById(group, s.from);
-      var to = memberById(group, s.to);
-      var text = '<strong>' + escapeHtml(displayName(group, s.from)) + '</strong> owes <strong>' +
+    let rows = suggestions.map(function (s) {
+      let from = memberById(group, s.from);
+      let to = memberById(group, s.to);
+      const text = '<strong>' + escapeHtml(displayName(group, s.from)) + '</strong> owes <strong>' +
         escapeHtml(displayName(group, s.to)) + '</strong> <span class="amt">' +
         escapeHtml(formatMoney(s.amount, group.currency)) + '</span>';
       return '<div class="suggestion-row">' + avatarHtml(from) +
@@ -472,12 +472,12 @@ import {
         '<p>Add your first shared expense and Expense Splitter keeps track of who owes what.</p>' +
         '<button class="btn btn-primary" type="button" data-action="open-expense">Add expense</button></div></section>';
     }
-    var visible = visibleExpenses(group);
-    var sorted = visible.slice().sort(function (a, b) {
+    const visible = visibleExpenses(group);
+    let sorted = visible.slice().sort(function (a, b) {
       return new Date(b.date) - new Date(a.date);
     });
 
-    var body = sorted.length
+    const body = sorted.length
       ? '<ul class="expense-list">' +
         sorted.map(function (e) { return expenseItemHtml(group, e); }).join('') + '</ul>'
       : '<div class="empty-state"><h3>No expenses match these filters</h3>' +
@@ -513,11 +513,11 @@ import {
   }
 
   function filtersHtml(group, visible) {
-    var cats = CATEGORIES.map(function (c) {
+    const cats = CATEGORIES.map(function (c) {
       return '<option value="' + escapeHtml(c) + '"' +
         (expenseFilters.category === c ? ' selected' : '') + '>' + escapeHtml(c) + '</option>';
     }).join('');
-    var members = group.members.map(function (m) {
+    let members = group.members.map(function (m) {
       return '<option value="' + escapeHtml(m.id) + '"' +
         (expenseFilters.member === m.id ? ' selected' : '') + '>' + escapeHtml(m.name) + '</option>';
     }).join('');
@@ -546,17 +546,17 @@ import {
   function breakdownHtml(group, visible) {
     if (!visible.length) return '';
 
-    var totals = {};
-    var total = 0;
+    const totals = {};
+    let total = 0;
     visible.forEach(function (e) {
-      var value = e.amount * (e.exchangeRate || 1);
-      var key = e.category || 'Other';
+      let value = e.amount * (e.exchangeRate || 1);
+      let key = e.category || 'Other';
       totals[key] = (totals[key] || 0) + value;
       total += value;
     });
 
-    var rows = Object.keys(totals).sort(function (a, b) { return totals[b] - totals[a]; }).map(function (cat) {
-      var share = total > 0 ? (totals[cat] / total) * 100 : 0;
+    let rows = Object.keys(totals).sort(function (a, b) { return totals[b] - totals[a]; }).map(function (cat) {
+      const share = total > 0 ? (totals[cat] / total) * 100 : 0;
       return '<li class="breakdown-row">' +
         '<span class="breakdown-swatch" aria-hidden="true" style="--swatch-color:' +
         escapeHtml(CATEGORY_COLORS[cat] || CATEGORY_COLORS.Other) + '"></span>' +
@@ -575,24 +575,24 @@ import {
   }
 
   function expenseItemHtml(group, e) {
-    var payer = memberById(group, e.paidBy);
-    var catColor = CATEGORY_COLORS[e.category] || CATEGORY_COLORS.Other;
-    var converted = e.currency !== group.currency
+    const payer = memberById(group, e.paidBy);
+    const catColor = CATEGORY_COLORS[e.category] || CATEGORY_COLORS.Other;
+    let converted = e.currency !== group.currency
       ? '<span class="expense-converted">≈ ' + escapeHtml(formatMoney(roundTo(e.amount * (e.exchangeRate || 1), group.currency), group.currency)) + '</span>'
       : '';
-    var tag = e.splitType && e.splitType !== 'equal'
+    const tag = e.splitType && e.splitType !== 'equal'
       ? '<span class="split-tag">' + escapeHtml(e.splitType) + '</span>' : '';
-    var recurring = e.recurring ? '<span class="split-tag">' + escapeHtml(e.recurring) + '</span>' : '';
+    const recurring = e.recurring ? '<span class="split-tag">' + escapeHtml(e.recurring) + '</span>' : '';
 
-    var detailRows = e.splits.map(function (s) {
-      var m = memberById(group, s.memberId);
-      var extra = s.percentage != null ? ' · ' + s.percentage + '%' : (s.shares != null ? ' · ' + s.shares + ' sh' : '');
+    const detailRows = e.splits.map(function (s) {
+      let m = memberById(group, s.memberId);
+      const extra = s.percentage != null ? ' · ' + s.percentage + '%' : (s.shares != null ? ' · ' + s.shares + ' sh' : '');
       return '<div class="expense-detail-row"><span>' + escapeHtml(displayName(group, s.memberId)) +
         '<span class="hide-sm">' + escapeHtml(extra) + '</span></span>' +
         '<span class="amt">' + escapeHtml(formatMoney(s.amount, e.currency)) + '</span></div>';
     }).join('');
-    var notes = e.notes ? '<p class="expense-notes">' + escapeHtml(e.notes) + '</p>' : '';
-    var rateNote = e.currency !== group.currency
+    const notes = e.notes ? '<p class="expense-notes">' + escapeHtml(e.notes) + '</p>' : '';
+    const rateNote = e.currency !== group.currency
       ? '<div class="expense-detail-row"><span>Rate at entry</span><span class="amt">1 ' + escapeHtml(e.currency) +
         ' = ' + escapeHtml(String(e.exchangeRate)) + ' ' + escapeHtml(group.currency) + '</span></div>'
       : '';
@@ -622,11 +622,11 @@ import {
 
   function settlementsHtml(group) {
     if (!group.settlements || !group.settlements.length) return '';
-    var sorted = group.settlements.slice().sort(function (a, b) {
+    let sorted = group.settlements.slice().sort(function (a, b) {
       return new Date(b.date) - new Date(a.date);
     });
-    var items = sorted.map(function (s) {
-      var converted = s.currency !== group.currency
+    const items = sorted.map(function (s) {
+      let converted = s.currency !== group.currency
         ? ' <span class="amt">(≈ ' + escapeHtml(formatMoney(roundTo(s.amount * (s.exchangeRate || 1), group.currency), group.currency)) + ')</span>'
         : '';
       return '<li class="settle-item">' +
@@ -664,9 +664,9 @@ import {
   /* ============ Expense dialog ============ */
 
   function openExpenseDialog() {
-    var group = currentGroup();
+    let group = currentGroup();
     if (!group) return;
-    var form = $('#expense-form');
+    let form = $('#expense-form');
     form.reset();
     showError($('#expense-error'), null);
 
@@ -684,14 +684,14 @@ import {
   }
 
   function splitType() {
-    var checked = document.querySelector('input[name="splitType"]:checked');
+    let checked = document.querySelector('input[name="splitType"]:checked');
     return checked ? checked.value : 'equal';
   }
 
   function selectedSplitMembers() {
-    var group = findGroup($('#expense-form').dataset.groupId);
+    let group = findGroup($('#expense-form').dataset.groupId);
     if (!group) return [];
-    var checked = {};
+    let checked = {};
     document.querySelectorAll('#split-members input[type="checkbox"]').forEach(function (cb) {
       if (cb.checked) checked[cb.value] = true;
     });
@@ -699,32 +699,32 @@ import {
   }
 
   function splitInputValues() {
-    var values = {};
+    const values = {};
     document.querySelectorAll('#split-members input[data-split-input]').forEach(function (inp) {
-      var v = parseFloat(inp.value);
+      let v = parseFloat(inp.value);
       values[inp.dataset.memberId] = isNaN(v) ? 0 : v;
     });
     return values;
   }
 
   function renderSplitMembers() {
-    var group = findGroup($('#expense-form').dataset.groupId);
+    let group = findGroup($('#expense-form').dataset.groupId);
     if (!group) return;
-    var type = splitType();
-    var currency = $('#exp-currency').value || group.currency;
-    var host = $('#split-members');
+    let type = splitType();
+    let currency = $('#exp-currency').value || group.currency;
+    const host = $('#split-members');
 
     /* Preserve current input values across re-renders */
-    var prev = splitInputValues();
-    var prevChecked = {};
+    const prev = splitInputValues();
+    const prevChecked = {};
     document.querySelectorAll('#split-members input[type="checkbox"]').forEach(function (cb) {
       prevChecked[cb.value] = cb.checked;
     });
-    var hasPrev = Object.keys(prevChecked).length > 0;
+    const hasPrev = Object.keys(prevChecked).length > 0;
 
     host.innerHTML = group.members.map(function (m) {
-      var isChecked = hasPrev ? prevChecked[m.id] !== false : true;
-      var inputHtml = '';
+      const isChecked = hasPrev ? prevChecked[m.id] !== false : true;
+      let inputHtml = '';
       if (type === 'exact') {
         inputHtml = '<span class="split-row-input"><input type="number" min="0" step="any" inputmode="decimal" data-split-input data-member-id="' +
           escapeHtml(m.id) + '" value="' + (prev[m.id] != null ? prev[m.id] : '') + '" placeholder="0.00" aria-label="Amount for ' + escapeHtml(m.name) + '"> ' + escapeHtml(currency) + '</span>';
@@ -745,34 +745,34 @@ import {
   }
 
   function updateSplitPreview() {
-    var preview = $('#split-preview');
-    var group = findGroup($('#expense-form').dataset.groupId);
+    const preview = $('#split-preview');
+    let group = findGroup($('#expense-form').dataset.groupId);
     if (!group) { preview.textContent = ''; return; }
-    var amount = parseFloat($('#exp-amount').value);
-    var currency = $('#exp-currency').value || group.currency;
-    var members = selectedSplitMembers();
-    var type = splitType();
+    let amount = parseFloat($('#exp-amount').value);
+    let currency = $('#exp-currency').value || group.currency;
+    let members = selectedSplitMembers();
+    let type = splitType();
 
     if (!members.length) { preview.textContent = 'Select at least one member to split with.'; return; }
     if (!(amount > 0)) { preview.textContent = ''; return; }
 
     if (type === 'exact') {
-      var inputs = splitInputValues();
-      var sum = members.reduce(function (a, m) { return a + (inputs[m.id] || 0); }, 0);
+      let inputs = splitInputValues();
+      const sum = members.reduce(function (a, m) { return a + (inputs[m.id] || 0); }, 0);
       preview.textContent = formatMoney(roundTo(sum, currency), currency) + ' of ' +
         formatMoney(amount, currency) + ' assigned';
       return;
     }
     if (type === 'percentage') {
-      var pcts = splitInputValues();
-      var psum = members.reduce(function (a, m) { return a + (pcts[m.id] || 0); }, 0);
+      const pcts = splitInputValues();
+      const psum = members.reduce(function (a, m) { return a + (pcts[m.id] || 0); }, 0);
       preview.textContent = roundTo(psum, currency) + '% of 100% assigned';
       return;
     }
 
-    var splits = computeSplits(type, amount, currency, members, splitInputValues());
-    var amounts = splits.map(function (s) { return s.amount; });
-    var uniform = amounts.every(function (a) { return a === amounts[0]; });
+    const splits = computeSplits(type, amount, currency, members, splitInputValues());
+    const amounts = splits.map(function (s) { return s.amount; });
+    const uniform = amounts.every(function (a) { return a === amounts[0]; });
     if (uniform) {
       preview.textContent = formatMoney(amounts[0], currency) + ' each';
     } else {
@@ -783,26 +783,26 @@ import {
   }
 
   function updateRateField() {
-    var group = findGroup($('#expense-form').dataset.groupId);
+    let group = findGroup($('#expense-form').dataset.groupId);
     if (!group) return;
-    var currency = $('#exp-currency').value;
-    var field = $('#rate-field');
+    let currency = $('#exp-currency').value;
+    let field = $('#rate-field');
     if (currency === group.currency) {
       field.hidden = true;
       return;
     }
     field.hidden = false;
-    var rate = defaultRate(currency, group.currency);
+    let rate = defaultRate(currency, group.currency);
     $('#exp-rate').value = rate;
     $('#rate-hint').textContent = '1 ' + currency + ' ≈ ' + rate + ' ' + group.currency;
     applyRateStatus();
   }
 
   function defaultRate(fromCurrency, toCurrency) {
-    var table = rates.table;
-    var from = table[fromCurrency] || 1;
-    var to = table[toCurrency] || 1;
-    var rate = to / from;
+    let table = rates.table;
+    let from = table[fromCurrency] || 1;
+    let to = table[toCurrency] || 1;
+    let rate = to / from;
     return Math.round(rate * 1000000) / 1000000;
   }
 
@@ -817,9 +817,9 @@ import {
 
   function readCachedRates() {
     try {
-      var raw = localStorage.getItem(RATES_CACHE_KEY);
+      let raw = localStorage.getItem(RATES_CACHE_KEY);
       if (!raw) return null;
-      var parsed = JSON.parse(raw);
+      let parsed = JSON.parse(raw);
       if (!parsed || !parsed.table || !parsed.fetchedAt) return null;
       return parsed;
     } catch (e) {
@@ -828,7 +828,7 @@ import {
   }
 
   function rateStatusText() {
-    var gapNote = rateGaps.length
+    const gapNote = rateGaps.length
       ? ' No live rate for ' + rateGaps.join(', ') + ' — using built-in values for those.'
       : '';
     if (rates.source === 'live') return 'Live rates, updated ' + relativeDate(rates.fetchedAt) + '.' + gapNote;
@@ -837,7 +837,7 @@ import {
   }
 
   function applyRateStatus() {
-    var el = $('#rate-status');
+    let el = $('#rate-status');
     if (!el) return;
     el.textContent = rateStatusText();
     el.dataset.source = rates.source;
@@ -847,8 +847,8 @@ import {
      table, because being unable to reach the API must not stop someone
      logging an expense. */
   function refreshRates() {
-    var cached = readCachedRates();
-    var fresh = cached && (Date.now() - cached.fetchedAt) < RATES_MAX_AGE_MS;
+    const cached = readCachedRates();
+    const fresh = cached && (Date.now() - cached.fetchedAt) < RATES_MAX_AGE_MS;
 
     if (cached) {
       rates = { table: cached.table, source: 'cache', fetchedAt: cached.fetchedAt };
@@ -868,10 +868,10 @@ import {
            which silently converts at par — a far worse outcome than an
            openly stale rate. Anything absent keeps its built-in value and is
            reported, so the conversion is never quietly wrong. */
-        var table = { USD: 1 };
-        var missing = [];
+        let table = { USD: 1 };
+        const missing = [];
         CURRENCIES.forEach(function (c) {
-          var v = data.rates[c];
+          let v = data.rates[c];
           if (typeof v === 'number' && isFinite(v) && v > 0) {
             table[c] = v;
           } else if (c !== 'USD') {
@@ -897,7 +897,7 @@ import {
   /* validateSplit reports what is wrong; turning that into a sentence is the
      view's job, so the rules stay testable without any copy in them. */
   function splitErrorText(problem, group, amount, currency, members) {
-    var named = problem.memberId
+    const named = problem.memberId
       ? memberById(group, problem.memberId).name
       : '';
     switch (problem.code) {
@@ -915,39 +915,39 @@ import {
   }
 
   function submitExpense() {
-    var form = $('#expense-form');
-    var group = findGroup(form.dataset.groupId);
-    var errorEl = $('#expense-error');
+    let form = $('#expense-form');
+    let group = findGroup(form.dataset.groupId);
+    let errorEl = $('#expense-error');
     if (!group) return;
 
-    var description = $('#exp-desc').value.trim();
-    var amount = parseFloat($('#exp-amount').value);
-    var currency = $('#exp-currency').value;
-    var paidBy = $('#exp-paidby').value;
-    var dateVal = $('#exp-date').value;
-    var category = $('#exp-category').value;
-    var type = splitType();
-    var members = selectedSplitMembers();
-    var inputs = splitInputValues();
+    let description = $('#exp-desc').value.trim();
+    let amount = parseFloat($('#exp-amount').value);
+    let currency = $('#exp-currency').value;
+    const paidBy = $('#exp-paidby').value;
+    let dateVal = $('#exp-date').value;
+    const category = $('#exp-category').value;
+    let type = splitType();
+    let members = selectedSplitMembers();
+    let inputs = splitInputValues();
 
     if (!description) { showError(errorEl, 'Please enter a description.', $('#exp-desc')); $('#exp-desc').focus(); return; }
     if (!(amount > 0)) { showError(errorEl, 'Please enter a valid amount greater than zero.', $('#exp-amount')); $('#exp-amount').focus(); return; }
     if (!dateVal) { showError(errorEl, 'Please pick a date.', $('#exp-date')); $('#exp-date').focus(); return; }
     if (!members.length) { showError(errorEl, 'Select at least one member to split with.'); return; }
 
-    var problem = validateSplit({ type: type, amount: amount, currency: currency, members: members, inputs: inputs });
+    const problem = validateSplit({ type: type, amount: amount, currency: currency, members: members, inputs: inputs });
     if (problem) {
       showError(errorEl, splitErrorText(problem, group, amount, currency, members));
       return;
     }
 
-    var rate = 1;
+    let rate = 1;
     if (currency !== group.currency) {
       rate = parseFloat($('#exp-rate').value);
       if (!(rate > 0)) { showError(errorEl, 'Please enter a valid exchange rate.', $('#exp-rate')); $('#exp-rate').focus(); return; }
     }
 
-    var expense = {
+    const expense = {
       id: uid('exp'),
       description: description,
       amount: roundTo(amount, currency),
@@ -971,14 +971,14 @@ import {
   /* ============ Settle dialog ============ */
 
   function openSettleDialog(prefill) {
-    var group = currentGroup();
+    let group = currentGroup();
     if (!group) return;
-    var form = $('#settle-form');
+    let form = $('#settle-form');
     form.reset();
     showError($('#settle-error'), null);
     form.dataset.groupId = group.id;
 
-    var options = memberOptions(group);
+    const options = memberOptions(group);
     fillSelect($('#settle-from'), options, prefill && prefill.from ? prefill.from : null);
     fillSelect($('#settle-to'), options, prefill && prefill.to ? prefill.to : null);
     $('#settle-date').value = new Date().toISOString().slice(0, 10);
@@ -990,19 +990,19 @@ import {
   }
 
   function updateSettleHint() {
-    var group = findGroup($('#settle-form').dataset.groupId);
+    let group = findGroup($('#settle-form').dataset.groupId);
     if (!group) return;
-    var from = $('#settle-from').value;
-    var to = $('#settle-to').value;
-    var hint = $('#settle-hint');
+    let from = $('#settle-from').value;
+    let to = $('#settle-to').value;
+    const hint = $('#settle-hint');
     if (from === to) {
       hint.textContent = 'Pick two different members.';
       return;
     }
-    var bal = computeBalances(group);
-    var suggestions = suggestSettlements(group, bal);
-    var match = null;
-    for (var i = 0; i < suggestions.length; i++) {
+    let bal = computeBalances(group);
+    let suggestions = suggestSettlements(group, bal);
+    let match = null;
+    for (let i = 0; i < suggestions.length; i++) {
       if (suggestions[i].from === from && suggestions[i].to === to) { match = suggestions[i]; break; }
     }
     hint.textContent = match
@@ -1014,15 +1014,15 @@ import {
   // What `from` still owes `to`, per the current settle-up plan. 0 when the
   // pair has nothing outstanding in that direction.
   function submitSettlement() {
-    var form = $('#settle-form');
-    var group = findGroup(form.dataset.groupId);
-    var errorEl = $('#settle-error');
+    let form = $('#settle-form');
+    let group = findGroup(form.dataset.groupId);
+    let errorEl = $('#settle-error');
     if (!group) return;
 
-    var from = $('#settle-from').value;
-    var to = $('#settle-to').value;
-    var amount = parseFloat($('#settle-amount').value);
-    var dateVal = $('#settle-date').value;
+    let from = $('#settle-from').value;
+    let to = $('#settle-to').value;
+    let amount = parseFloat($('#settle-amount').value);
+    let dateVal = $('#settle-date').value;
 
     if (from === to) { showError(errorEl, 'Pick two different members.'); return; }
     if (!(amount > 0)) { showError(errorEl, 'Please enter a valid amount greater than zero.', $('#settle-amount')); $('#settle-amount').focus(); return; }
@@ -1030,7 +1030,7 @@ import {
 
     /* Paying more than the outstanding debt flips the pair's balance and makes
        the next settle-up suggestion point the wrong way, so cap it here. */
-    var owed = outstandingBetween(group, from, to);
+    const owed = outstandingBetween(group, from, to);
     if (owed <= 0) {
       showError(errorEl, displayName(group, from) + ' does not owe ' + displayName(group, to) + ' anything.', $('#settle-amount'));
       $('#settle-amount').focus();
@@ -1043,7 +1043,7 @@ import {
       return;
     }
 
-    var settlement = {
+    const settlement = {
       id: uid('stl'),
       from: from,
       to: to,
@@ -1065,7 +1065,7 @@ import {
   /* ============ Group dialog ============ */
 
   function openGroupDialog() {
-    var form = $('#group-form');
+    let form = $('#group-form');
     form.reset();
     showError($('#group-error'), null);
     fillSelect($('#grp-currency'), currencyOptions(), 'USD');
@@ -1074,18 +1074,18 @@ import {
   }
 
   function submitGroup() {
-    var errorEl = $('#group-error');
-    var name = $('#grp-name').value.trim();
-    var description = $('#grp-desc').value.trim();
-    var currency = $('#grp-currency').value;
-    var memberLines = $('#grp-members').value.split('\n')
+    let errorEl = $('#group-error');
+    let name = $('#grp-name').value.trim();
+    let description = $('#grp-desc').value.trim();
+    let currency = $('#grp-currency').value;
+    const memberLines = $('#grp-members').value.split('\n')
       .map(function (l) { return l.trim(); })
       .filter(function (l) { return l.length > 0; });
 
     if (!name) { showError(errorEl, 'Please give the group a name.', $('#grp-name')); $('#grp-name').focus(); return; }
     if (!memberLines.length) { showError(errorEl, 'Add at least one member (the first one is you).', $('#grp-members')); $('#grp-members').focus(); return; }
 
-    var group = {
+    let group = {
       id: uid('grp'),
       name: name,
       description: description,
@@ -1136,9 +1136,9 @@ import {
   const sidebarQuery = window.matchMedia('(max-width: 900px)');
 
   function syncSidebarState() {
-    var sidebar = $('#sidebar');
-    var toggle = $('[data-action="open-sidebar"]');
-    var offCanvas = sidebarQuery.matches && !document.body.classList.contains('sidebar-open');
+    const sidebar = $('#sidebar');
+    let toggle = $('[data-action="open-sidebar"]');
+    const offCanvas = sidebarQuery.matches && !document.body.classList.contains('sidebar-open');
     sidebar.toggleAttribute('inert', offCanvas);
     if (offCanvas) sidebar.setAttribute('aria-hidden', 'true');
     else sidebar.removeAttribute('aria-hidden');
@@ -1149,7 +1149,7 @@ import {
     document.body.classList.add('sidebar-open');
     $('#sidebar-backdrop').hidden = false;
     syncSidebarState();
-    var firstLink = $('#sidebar').querySelector('a, button');
+    const firstLink = $('#sidebar').querySelector('a, button');
     if (firstLink) firstLink.focus();
   }
 
@@ -1157,7 +1157,7 @@ import {
     document.body.classList.remove('sidebar-open');
     $('#sidebar-backdrop').hidden = true;
     syncSidebarState();
-    var toggle = $('[data-action="open-sidebar"]');
+    let toggle = $('[data-action="open-sidebar"]');
     if (toggle) toggle.focus();
   }
 
@@ -1167,18 +1167,18 @@ import {
     /* Filter controls are rebuilt on every render, so listen on the document
        and read the intent off data-filter rather than rebinding each time. */
     document.addEventListener('change', function (ev) {
-      var field = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-filter');
+      let field = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-filter');
       if (!field) return;
       expenseFilters[field] = ev.target.value;
       renderApp();
-      var again = document.getElementById(ev.target.id);
+      const again = document.getElementById(ev.target.id);
       if (again) again.focus();
     });
 
     document.addEventListener('click', function (ev) {
-      var actionEl = ev.target.closest('[data-action]');
+      const actionEl = ev.target.closest('[data-action]');
       if (actionEl) {
-        var action = actionEl.dataset.action;
+        let action = actionEl.dataset.action;
         if (action === 'toggle-theme') toggleTheme();
         else if (action === 'open-expense') openExpenseDialog();
         else if (action === 'open-settle') openSettleDialog(null);
@@ -1191,9 +1191,9 @@ import {
         else if (action === 'suggest-settle') {
           openSettleDialog({ from: actionEl.dataset.from, to: actionEl.dataset.to, amount: actionEl.dataset.amount });
         } else if (action === 'toggle-expense') {
-          var expanded = actionEl.getAttribute('aria-expanded') === 'true';
+          let expanded = actionEl.getAttribute('aria-expanded') === 'true';
           actionEl.setAttribute('aria-expanded', String(!expanded));
-          var detail = document.getElementById(actionEl.getAttribute('aria-controls'));
+          const detail = document.getElementById(actionEl.getAttribute('aria-controls'));
           if (detail) detail.hidden = expanded;
         }
         return;
