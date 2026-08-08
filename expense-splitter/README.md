@@ -11,6 +11,7 @@ This is a solution to the [Expense Splitter product challenge](https://www.front
   - [Links](#links)
 - [Running the project](#running-the-project)
 - [Built with](#built-with)
+- [Exchange rates](#exchange-rates)
 - [Features](#features)
 - [Implementation notes](#implementation-notes)
 - [What I learned](#what-i-learned)
@@ -57,7 +58,7 @@ Then visit http://localhost:8000/expense-splitter/.
 ## Features
 
 - **Four split types** — equal, exact amounts, percentages, and shares
-- **Multi-currency expenses** with the rate stored at entry time, so historical balances stay stable
+- **Multi-currency expenses** with live rates from [Frankfurter](https://frankfurter.dev) (ECB data, no API key). Rates are fetched once on load and cached for twelve hours; the rate in force is stored on each expense, so historical balances never move when rates do
 - **Balances and settle-up** — greedy pairwise netting reduces the debts to the fewest payments that clear the group
 - **Recording settlements**, capped at the outstanding debt for that pair
 - **Filtering and a spending breakdown** by category, member, and date range
@@ -73,9 +74,30 @@ exercised directly:
 node --test expense-splitter/tests/money.test.js
 ```
 
-Thirteen tests cover rounding, remainder distribution, balance derivation,
-currency conversion, and settle-up — the places where a bug is silent, because
+Twenty-six tests cover rounding, remainder distribution, balance derivation,
+currency conversion, split validation, and settle-up — the places where a bug is silent, because
 the interface still renders and only the numbers are wrong.
+
+## Exchange rates
+
+Frankfurter was chosen because it needs no API key. On a static site there is no
+server to keep a secret behind, so a key-required provider would either not work
+or ship the key in readable source. (`exchangerate.host`, the first choice, began
+requiring one — hence the switch.)
+
+The lookup degrades in three steps and always says which one produced the number
+on screen:
+
+| State | When | Shown |
+|-------|------|-------|
+| Live | fetch succeeded | "Live rates, updated today." |
+| Cache | fetch failed, cached rates exist | "Cached rates from … — may be outdated." |
+| Built-in | no network and no cache | "Live rates unavailable — using built-in rates…" |
+
+A currency missing from the payload keeps its built-in value and is named in the
+status line, rather than defaulting to `1` and silently converting at par. The
+request never blocks expense entry: a failure degrades quietly instead of
+rejecting.
 
 ## Implementation notes
 
