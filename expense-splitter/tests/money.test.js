@@ -127,10 +127,38 @@ test('a foreign-currency expense converts at its stored rate', () => {
 
 /* ---- settle-up -------------------------------------------------- */
 
-test('settle-up clears every debt', () => {
+test('settle-up names the right payers, recipients, and amounts', () => {
+  // a paid 90 for three, so b and c each owe 30 back to a — two payments,
+  // not some other arrangement that happens to balance
+  const plan = suggestSettlements(group, computeBalances(group));
+  assert.deepEqual(plan, [
+    { from: 'b', to: 'a', amount: 30 },
+    { from: 'c', to: 'a', amount: 30 },
+  ]);
+});
+
+test('settle-up uses the fewest payments across several creditors', () => {
+  // two debtors, two creditors: greedy netting should pair largest with
+  // largest and finish in three transfers rather than four
+  const wide = {
+    currency: 'USD',
+    members: [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }],
+    expenses: [
+      { paidBy: 'a', amount: 100, splits: [{ memberId: 'c', amount: 60 }, { memberId: 'd', amount: 40 }] },
+      { paidBy: 'b', amount: 50, splits: [{ memberId: 'c', amount: 20 }, { memberId: 'd', amount: 30 }] },
+    ],
+    settlements: [],
+  };
+  const bal = computeBalances(wide);
+  const plan = suggestSettlements(wide, bal);
+  assert.equal(plan.length, 3);
+  plan.forEach((s) => { bal[s.from] += s.amount; bal[s.to] -= s.amount; });
+  Object.values(bal).forEach((v) => assert.ok(Math.abs(v) < 0.005, `left ${v} outstanding`));
+});
+
+test('applying the plan clears every debt', () => {
   const bal = computeBalances(group);
-  const plan = suggestSettlements(group, bal);
-  plan.forEach((s) => {
+  suggestSettlements(group, bal).forEach((s) => {
     bal[s.from] += s.amount;
     bal[s.to] -= s.amount;
   });
