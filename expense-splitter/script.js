@@ -9,6 +9,17 @@
 */
 'use strict';
 
+import {
+  EPSILON,
+  ZERO_DECIMAL,
+  unitFor,
+  roundTo,
+  distributeUnits,
+  computeBalances,
+  suggestSettlements,
+  outstandingBetween,
+} from './js/money.js';
+
 (function () {
   /* ============ Constants ============ */
 
@@ -17,7 +28,6 @@
   var SELECTED_KEY = 'expense-splitter:selected-group';
 
   var CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'INR', 'MXN'];
-  var ZERO_DECIMAL = { JPY: true, KRW: true, VND: true, CLP: true, ISK: true };
   var CATEGORIES = [
     'Accommodation', 'Entertainment', 'Food & Drink', 'Groceries',
     'Housing', 'Other', 'Shopping', 'Transport', 'Utilities'
@@ -42,8 +52,6 @@
   var RATE_PER_USD = { USD: 1, EUR: 0.92, GBP: 0.79, JPY: 149, CAD: 1.36, AUD: 1.52, CHF: 0.88, CNY: 7.2, INR: 83, MXN: 18.2 };
   var AVATAR_PALETTE = ['#5b8def', '#36d29a', '#e3b341', '#f2606a', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
 
-  /* Balances below half a cent (in group currency) are treated as settled. */
-  var EPSILON = 0.005;
 
   /* ============ State ============ */
 
@@ -102,19 +110,6 @@
   }
 
   /* ============ Money & formatting ============ */
-
-  function decimalsFor(currency) {
-    return ZERO_DECIMAL[currency] ? 0 : 2;
-  }
-
-  function unitFor(currency) {
-    return ZERO_DECIMAL[currency] ? 1 : 0.01;
-  }
-
-  function roundTo(amount, currency) {
-    var f = Math.pow(10, decimalsFor(currency));
-    return Math.round(amount * f) / f;
-  }
 
   var formatters = {};
   function formatMoney(amount, currency) {
@@ -189,65 +184,11 @@
 
   /* Net balance per member in the group's currency.
      Positive: the member is owed money. Negative: the member owes money. */
-  function computeBalances(group) {
-    var bal = {};
-    group.members.forEach(function (m) { bal[m.id] = 0; });
-    group.expenses.forEach(function (e) {
-      var rate = e.exchangeRate || 1;
-      bal[e.paidBy] = (bal[e.paidBy] || 0) + e.amount * rate;
-      e.splits.forEach(function (s) {
-        bal[s.memberId] = (bal[s.memberId] || 0) - s.amount * rate;
-      });
-    });
-    (group.settlements || []).forEach(function (s) {
-      var rate = s.exchangeRate || 1;
-      bal[s.from] = (bal[s.from] || 0) + s.amount * rate;
-      bal[s.to] = (bal[s.to] || 0) - s.amount * rate;
-    });
-    return bal;
-  }
-
   /* Greedy pairwise netting: largest debtor pays largest creditor. */
-  function suggestSettlements(group, bal) {
-    var debtors = [], creditors = [];
-    Object.keys(bal).forEach(function (id) {
-      var v = bal[id];
-      if (v < -EPSILON) debtors.push({ id: id, amt: -v });
-      else if (v > EPSILON) creditors.push({ id: id, amt: v });
-    });
-    debtors.sort(function (a, b) { return b.amt - a.amt; });
-    creditors.sort(function (a, b) { return b.amt - a.amt; });
-    var out = [];
-    var i = 0, j = 0;
-    while (i < debtors.length && j < creditors.length) {
-      var pay = Math.min(debtors[i].amt, creditors[j].amt);
-      out.push({ from: debtors[i].id, to: creditors[j].id, amount: roundTo(pay, group.currency) });
-      debtors[i].amt -= pay;
-      creditors[j].amt -= pay;
-      if (debtors[i].amt < EPSILON) i++;
-      if (creditors[j].amt < EPSILON) j++;
-    }
-    return out;
-  }
-
   /* ============ Split engine ============ */
 
   /* Deterministic rounding: split `amount` into integer currency units and
      distribute leftover units one by one, so splits always sum to the total. */
-  function distributeUnits(totalUnits, weights) {
-    var weightSum = weights.reduce(function (a, b) { return a + b; }, 0);
-    var shares = weights.map(function (w) {
-      var exact = weightSum > 0 ? (totalUnits * w) / weightSum : totalUnits / weights.length;
-      return { base: Math.floor(exact), frac: exact - Math.floor(exact) };
-    });
-    var assigned = shares.reduce(function (a, s) { return a + s.base; }, 0);
-    var remainder = totalUnits - assigned;
-    var order = shares.map(function (s, idx) { return idx; })
-      .sort(function (a, b) { return shares[b].frac - shares[a].frac || a - b; });
-    for (var k = 0; k < remainder; k++) shares[order[k % order.length]].base += 1;
-    return shares.map(function (s) { return s.base; });
-  }
-
   function computeSplits(splitType, amount, currency, members, inputs) {
     var unit = unitFor(currency);
     var totalUnits = Math.round(amount / unit);
@@ -1051,14 +992,6 @@
 
   // What `from` still owes `to`, per the current settle-up plan. 0 when the
   // pair has nothing outstanding in that direction.
-  function outstandingBetween(group, from, to) {
-    var suggestions = suggestSettlements(group, computeBalances(group));
-    for (var i = 0; i < suggestions.length; i++) {
-      if (suggestions[i].from === from && suggestions[i].to === to) return suggestions[i].amount;
-    }
-    return 0;
-  }
-
   function submitSettlement() {
     var form = $('#settle-form');
     var group = findGroup(form.dataset.groupId);

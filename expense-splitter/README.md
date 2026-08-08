@@ -45,7 +45,8 @@ Then visit http://localhost:8000/expense-splitter/.
 
 - Semantic HTML with `header`, `aside`, `main`, and native `<dialog>` overlays
 - CSS custom properties, split into `tokens.css` (the design system) and `style.css` (components)
-- Vanilla JavaScript, no framework and no bundler
+- Vanilla JavaScript ES modules, no framework and no bundler
+- Node's built-in test runner for the money core
 - Hash-based routing for the landing page, group list, and per-group views
 - `localStorage` for persistence, seeded from `data/sample-groups.json`
 
@@ -60,6 +61,19 @@ Then visit http://localhost:8000/expense-splitter/.
 - **Filtering and a spending breakdown** by category, member, and date range
 - **Light and dark themes**, remembered across visits
 - **Keyboard support throughout** — skip link, focus-managed dialogs, an inert off-canvas sidebar, and errors tied to the fields that caused them
+
+## Tests
+
+The money core lives in `js/money.js`, free of DOM and storage so it can be
+exercised directly:
+
+```bash
+node --test expense-splitter/tests/money.test.js
+```
+
+Thirteen tests cover rounding, remainder distribution, balance derivation,
+currency conversion, and settle-up — the places where a bug is silent, because
+the interface still renders and only the numbers are wrong.
 
 ## Implementation notes
 
@@ -81,7 +95,7 @@ A skip link has to know which view it is in. With two routed views each shipping
 
 ## Continued development
 
-- Replace the static fallback rates with a live exchange-rate API, including caching and an "offline rates" indicator
+- Continue splitting `script.js`: the money core is extracted, but rendering, dialogs, and form handling still share one file
 - Extend the test suite beyond the money core to routing and rendering
 - Revisit the greedy settle-up algorithm: it minimises the number of payments but does not consider who would rather pay whom
 
