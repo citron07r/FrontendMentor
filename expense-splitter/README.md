@@ -2,7 +2,7 @@
 
 Split shared costs with friends, roommates, and travel companions: log an expense, choose how it divides, and the app keeps track of who owes whom until everyone is square.
 
-This is a solution to the [Expense Splitter product challenge](https://www.frontendmentor.io) on Frontend Mentor. The original brief is kept in [BRIEF.md](./BRIEF.md).
+This is a solution to the [Expense Splitter product challenge](https://www.frontendmentor.io/challenges/expense-splitter) on Frontend Mentor. The original brief is kept in [BRIEF.md](./BRIEF.md).
 
 ## Table of contents
 
@@ -29,7 +29,9 @@ This is the **frontend-only path** described in `spec/technical-requirements.md`
 
 ### Links
 
+- Challenge: https://www.frontendmentor.io/challenges/expense-splitter
 - Live Site URL: https://citron07r.github.io/FrontendMentor/expense-splitter/
+- Repository: https://github.com/citron07r/FrontendMentor/tree/main/expense-splitter
 
 ## Running the project
 
