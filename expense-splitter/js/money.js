@@ -113,3 +113,46 @@ export function outstandingBetween(group, from, to) {
   const match = suggestions.find((s) => s.from === from && s.to === to);
   return match ? match.amount : 0;
 }
+
+/*
+  Split validation, kept here rather than in the form so the rules can be
+  asserted directly. Returns null when the split is usable, otherwise
+  { code, memberId? } describing the first problem found.
+
+  Checking the total is not enough: 110 / −10 / 0 sums to exactly 100 while
+  meaning one person is owed a negative share, so each value is checked on
+  its own first.
+*/
+export function validateSplit({ type, amount, currency, members, inputs }) {
+  if (!members || !members.length) return { code: 'no-members' };
+  if (!(amount > 0) || !isFinite(amount)) return { code: 'bad-amount' };
+  if (type === 'equal') return null;
+
+  const value = (m) => inputs[m.id];
+
+  const bad = members.find((m) => {
+    const v = value(m);
+    return v !== undefined && (!isFinite(v) || v < 0);
+  });
+  if (bad) return { code: 'negative-or-nan', memberId: bad.id };
+
+  const sum = members.reduce((a, m) => a + (value(m) || 0), 0);
+
+  if (type === 'exact') {
+    return Math.abs(sum - amount) > unitFor(currency) / 2
+      ? { code: 'exact-mismatch', sum }
+      : null;
+  }
+
+  if (type === 'percentage') {
+    const over = members.find((m) => (value(m) || 0) > 100);
+    if (over) return { code: 'percentage-over-100', memberId: over.id };
+    return Math.abs(sum - 100) > 0.01 ? { code: 'percentage-sum', sum } : null;
+  }
+
+  if (type === 'shares') {
+    return sum > 0 ? null : { code: 'shares-not-positive' };
+  }
+
+  return null;
+}

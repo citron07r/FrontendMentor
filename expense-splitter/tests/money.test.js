@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 
 import {
   roundTo,
+  validateSplit,
   unitFor,
   distributeUnits,
   computeBalances,
@@ -38,14 +39,22 @@ test('an indivisible amount still sums to the total', () => {
   assert.equal(units.reduce((a, b) => a + b, 0), 1000);
 });
 
-test('weighted splits sum to the total', () => {
-  const units = distributeUnits(1000, [50, 30, 20]);
-  assert.equal(units.reduce((a, b) => a + b, 0), 1000);
+test('weighted splits allocate by weight, not just to the right total', () => {
+  // asserting the allocation catches an implementation that dumps
+  // everything on one member while still summing correctly
+  assert.deepEqual(distributeUnits(1000, [50, 30, 20]), [500, 300, 200]);
+});
+
+test('an uneven weighting gives the spare unit to the largest fraction', () => {
+  // 100 across 3:2:1 is 50 / 33.33 / 16.67; the spare unit goes to the
+  // biggest fractional part rather than to whoever is first
+  const units = distributeUnits(100, [3, 2, 1]);
+  assert.deepEqual(units, [50, 33, 17]);
+  assert.equal(units.reduce((a, b) => a + b, 0), 100);
 });
 
 test('zero weights fall back to an even split rather than dividing by zero', () => {
-  const units = distributeUnits(300, [0, 0, 0]);
-  assert.equal(units.reduce((a, b) => a + b, 0), 300);
+  assert.deepEqual(distributeUnits(300, [0, 0, 0]), [100, 100, 100]);
 });
 
 test('one penny across many people is never duplicated or lost', () => {
@@ -143,4 +152,63 @@ test('a settled group needs no payments', () => {
 test('outstandingBetween reports the debt only in the direction it exists', () => {
   assert.equal(outstandingBetween(group, 'b', 'a'), 30);
   assert.equal(outstandingBetween(group, 'a', 'b'), 0);
+});
+
+/* ---- split validation ------------------------------------------ */
+
+const members = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+const check = (over) => validateSplit({
+  type: 'exact', amount: 100, currency: 'USD', members, inputs: {}, ...over,
+});
+
+test('an equal split needs no per-member input', () => {
+  assert.equal(check({ type: 'equal' }), null);
+});
+
+test('a split with no participants is rejected', () => {
+  assert.equal(check({ members: [] }).code, 'no-members');
+});
+
+test('a zero or non-finite amount is rejected', () => {
+  assert.equal(check({ amount: 0 }).code, 'bad-amount');
+  assert.equal(check({ amount: NaN }).code, 'bad-amount');
+  assert.equal(check({ amount: Infinity }).code, 'bad-amount');
+});
+
+test('a correct total does not excuse a negative share', () => {
+  const problem = check({ inputs: { a: 110, b: -10, c: 0 } });
+  assert.equal(problem.code, 'negative-or-nan');
+  assert.equal(problem.memberId, 'b');
+});
+
+test('NaN in a split is rejected rather than poisoning the balances', () => {
+  assert.equal(check({ inputs: { a: NaN, b: 50, c: 50 } }).code, 'negative-or-nan');
+});
+
+test('exact amounts must reconcile with the expense total', () => {
+  assert.equal(check({ inputs: { a: 40, b: 30, c: 30 } }), null);
+  assert.equal(check({ inputs: { a: 40, b: 30, c: 20 } }).code, 'exact-mismatch');
+});
+
+test('exact amounts are judged against half a minor unit', () => {
+  // 33.33 x3 = 99.99, a penny short of 100 — outside the tolerance
+  assert.equal(check({ inputs: { a: 33.33, b: 33.33, c: 33.33 } }).code, 'exact-mismatch');
+  // giving the spare penny to one member reconciles exactly
+  assert.equal(check({ inputs: { a: 33.33, b: 33.33, c: 33.34 } }), null);
+});
+
+test('zero-decimal currencies use a whole unit of tolerance', () => {
+  const yen = { type: 'exact', amount: 1000, currency: 'JPY', members, inputs: { a: 334, b: 333, c: 333 } };
+  assert.equal(validateSplit(yen), null);
+});
+
+test('percentages must total 100 and stay within range', () => {
+  assert.equal(check({ type: 'percentage', inputs: { a: 50, b: 30, c: 20 } }), null);
+  assert.equal(check({ type: 'percentage', inputs: { a: 50, b: 30, c: 10 } }).code, 'percentage-sum');
+  assert.equal(check({ type: 'percentage', inputs: { a: 150, b: 0, c: 0 } }).code, 'percentage-over-100');
+});
+
+test('shares must be positive overall', () => {
+  assert.equal(check({ type: 'shares', inputs: { a: 2, b: 1, c: 1 } }), null);
+  assert.equal(check({ type: 'shares', inputs: { a: 0, b: 0, c: 0 } }).code, 'shares-not-positive');
 });
