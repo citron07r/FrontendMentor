@@ -11,6 +11,7 @@ My solutions to [Frontend Mentor](https://www.frontendmentor.io) challenges. Eac
 | Huddle landing page | [Live](https://citron07r.github.io/FrontendMentor/huddle-landing-page/) | [`huddle-landing-page/`](./huddle-landing-page) |
 | Hotel booking confirmation | [Live](https://citron07r.github.io/FrontendMentor/hotel-booking-confirmation/) | [`hotel-booking-confirmation/`](./hotel-booking-confirmation) |
 | Tastemap restaurant ranking app | [Live](https://citron07r.github.io/FrontendMentor/restaurant-ranking-app/) | [`restaurant-ranking-app/`](./restaurant-ranking-app) |
+| Expense Splitter | [Live](https://citron07r.github.io/FrontendMentor/expense-splitter/) | [`expense-splitter/`](./expense-splitter) |
 
 ## Running locally
 
