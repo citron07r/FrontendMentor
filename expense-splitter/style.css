@@ -240,6 +240,8 @@ time,
 /* ============ Avatars ============ */
 
 .avatar {
+  background: var(--avatar-bg, var(--color-bg-tertiary));
+  color: var(--avatar-fg, var(--color-text-primary));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -819,6 +821,7 @@ time,
 }
 
 .cat-dot {
+  background: var(--dot-color, var(--color-border-strong));
   width: 0.5rem;
   height: 0.5rem;
   border-radius: var(--radius-full);
@@ -1459,4 +1462,15 @@ time,
 
 .settlement-history {
   margin-top: var(--space-6);
+}
+
+/* Data-driven colour arrives as a custom property from the renderer; the
+   declarations that consume it stay here. */
+.breakdown-swatch {
+  background: var(--swatch-color, var(--color-border-strong));
+}
+
+.breakdown-bar > span {
+  width: var(--bar-width, 0%);
+  background: var(--bar-color, var(--color-border-strong));
 }

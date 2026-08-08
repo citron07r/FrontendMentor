@@ -173,13 +173,13 @@
 
       <div class="field">
         <label for="exp-desc">Description</label>
-        <input id="exp-desc" name="description" type="text" required maxlength="80" placeholder="Dinner in Dotonbori" autocomplete="off">
+        <input id="exp-desc" aria-invalid="false" name="description" type="text" required maxlength="80" placeholder="Dinner in Dotonbori" autocomplete="off">
       </div>
 
       <div class="field-row">
         <div class="field">
           <label for="exp-amount">Amount</label>
-          <input id="exp-amount" name="amount" type="number" min="0" step="any" inputmode="decimal" required placeholder="0.00">
+          <input id="exp-amount" aria-invalid="false" name="amount" type="number" min="0" step="any" inputmode="decimal" required placeholder="0.00">
         </div>
         <div class="field">
           <label for="exp-currency">Currency</label>
@@ -189,7 +189,7 @@
 
       <div class="field" id="rate-field" hidden>
         <label for="exp-rate">Exchange rate <span class="field-hint mono" id="rate-hint"></span></label>
-        <input id="exp-rate" name="rate" type="number" min="0" step="any" inputmode="decimal">
+        <input id="exp-rate" aria-invalid="false" name="rate" type="number" min="0" step="any" inputmode="decimal">
         <p class="rate-status" id="rate-status" role="status"></p>
         <p class="field-hint">Editable: the rate is stored with the expense so historical balances stay stable.</p>
       </div>
@@ -201,7 +201,7 @@
         </div>
         <div class="field">
           <label for="exp-date">Date</label>
-          <input id="exp-date" name="date" type="date" required>
+          <input id="exp-date" aria-invalid="false" name="date" type="date" required>
         </div>
       </div>
 
@@ -255,11 +255,11 @@
       <div class="field-row">
         <div class="field">
           <label for="settle-amount">Amount</label>
-          <input id="settle-amount" name="amount" type="number" min="0" step="any" inputmode="decimal" required placeholder="0.00">
+          <input id="settle-amount" aria-invalid="false" name="amount" type="number" min="0" step="any" inputmode="decimal" required placeholder="0.00">
         </div>
         <div class="field">
           <label for="settle-date">Date</label>
-          <input id="settle-date" name="date" type="date" required>
+          <input id="settle-date" aria-invalid="false" name="date" type="date" required>
         </div>
       </div>
       <p class="field-hint">Recorded in the group's currency. Partial settlements are fine; the rest stays open.</p>
@@ -284,7 +284,7 @@
 
       <div class="field">
         <label for="grp-name">Group name</label>
-        <input id="grp-name" name="name" type="text" required maxlength="60" placeholder="Ski trip 2026" autocomplete="off">
+        <input id="grp-name" aria-invalid="false" name="name" type="text" required maxlength="60" placeholder="Ski trip 2026" autocomplete="off">
       </div>
       <div class="field">
         <label for="grp-desc">Description <span class="field-hint">(optional)</span></label>
