@@ -281,11 +281,28 @@
     setTimeout(function () { el.textContent = msg; }, 30);
   }
 
-  function showError(el, msg) {
+  /* A role="alert" on its own announces the problem but not which input caused
+     it. Passing the offending field ties the two together and marks it invalid,
+     clearing whichever field was flagged last. */
+  function showError(el, msg, field) {
     if (!el) return;
+
+    var previous = el.invalidField;
+    if (previous) {
+      previous.removeAttribute('aria-invalid');
+      if (previous.getAttribute('aria-describedby') === el.id) previous.removeAttribute('aria-describedby');
+      el.invalidField = null;
+    }
+
     if (!msg) { el.hidden = true; el.textContent = ''; return; }
     el.textContent = msg;
     el.hidden = false;
+
+    if (field) {
+      field.setAttribute('aria-invalid', 'true');
+      field.setAttribute('aria-describedby', el.id);
+      el.invalidField = field;
+    }
   }
 
   function openDialog(dialog) {
@@ -327,15 +344,24 @@
     }
   }
 
+  /* Both views ship their own <main>, and only one is visible at a time. The
+     skip link has to follow, or it drops keyboard users into the hidden view. */
+  function pointSkipLinkAt(id) {
+    var link = document.querySelector('.skip-link');
+    if (link) link.setAttribute('href', '#' + id);
+  }
+
   function showLanding() {
     $('#landing-view').hidden = false;
     $('#app-view').hidden = true;
+    pointSkipLinkAt('main');
     document.title = 'Expense Splitter — Split expenses. Settle up. Stay friends.';
   }
 
   function showApp() {
     $('#landing-view').hidden = true;
     $('#app-view').hidden = false;
+    pointSkipLinkAt('app-main');
     renderApp();
   }
 
@@ -734,10 +760,25 @@
     var members = selectedSplitMembers();
     var inputs = splitInputValues();
 
-    if (!description) { showError(errorEl, 'Please enter a description.'); $('#exp-desc').focus(); return; }
-    if (!(amount > 0)) { showError(errorEl, 'Please enter a valid amount greater than zero.'); $('#exp-amount').focus(); return; }
-    if (!dateVal) { showError(errorEl, 'Please pick a date.'); $('#exp-date').focus(); return; }
+    if (!description) { showError(errorEl, 'Please enter a description.', $('#exp-desc')); $('#exp-desc').focus(); return; }
+    if (!(amount > 0)) { showError(errorEl, 'Please enter a valid amount greater than zero.', $('#exp-amount')); $('#exp-amount').focus(); return; }
+    if (!dateVal) { showError(errorEl, 'Please pick a date.', $('#exp-date')); $('#exp-date').focus(); return; }
     if (!members.length) { showError(errorEl, 'Select at least one member to split with.'); return; }
+
+    /* A correct total can still hide a nonsense line: 60 / −10 / 50 sums to 100
+       but means someone is owed a negative share. Check each value, then the
+       total. NaN and Infinity are rejected here too, since they would otherwise
+       propagate silently into every balance. */
+    if (type === 'exact' || type === 'percentage' || type === 'shares') {
+      var badMember = members.find(function (m) {
+        var v = inputs[m.id];
+        return v !== undefined && (!isFinite(v) || v < 0);
+      });
+      if (badMember) {
+        showError(errorEl, 'Split values must be zero or more. Check ' + badMember.name + '.');
+        return;
+      }
+    }
 
     if (type === 'exact') {
       var sum = members.reduce(function (a, m) { return a + (inputs[m.id] || 0); }, 0);
@@ -748,6 +789,11 @@
       }
     }
     if (type === 'percentage') {
+      var overHundred = members.find(function (m) { return (inputs[m.id] || 0) > 100; });
+      if (overHundred) {
+        showError(errorEl, 'A percentage cannot be more than 100%. Check ' + overHundred.name + '.');
+        return;
+      }
       var psum = members.reduce(function (a, m) { return a + (inputs[m.id] || 0); }, 0);
       if (Math.abs(psum - 100) > 0.01) {
         showError(errorEl, 'Percentages must add up to 100%. Currently: ' + roundTo(psum, currency) + '%.');
@@ -756,13 +802,13 @@
     }
     if (type === 'shares') {
       var ssum = members.reduce(function (a, m) { return a + (inputs[m.id] || 0); }, 0);
-      if (ssum <= 0) { showError(errorEl, 'Shares must add up to more than zero.'); return; }
+      if (!(ssum > 0)) { showError(errorEl, 'Shares must add up to more than zero.'); return; }
     }
 
     var rate = 1;
     if (currency !== group.currency) {
       rate = parseFloat($('#exp-rate').value);
-      if (!(rate > 0)) { showError(errorEl, 'Please enter a valid exchange rate.'); $('#exp-rate').focus(); return; }
+      if (!(rate > 0)) { showError(errorEl, 'Please enter a valid exchange rate.', $('#exp-rate')); $('#exp-rate').focus(); return; }
     }
 
     var expense = {
@@ -829,6 +875,16 @@
       : 'No outstanding balance from ' + displayName(group, from) + ' to ' + displayName(group, to) + '.';
   }
 
+  // What `from` still owes `to`, per the current settle-up plan. 0 when the
+  // pair has nothing outstanding in that direction.
+  function outstandingBetween(group, from, to) {
+    var suggestions = suggestSettlements(group, computeBalances(group));
+    for (var i = 0; i < suggestions.length; i++) {
+      if (suggestions[i].from === from && suggestions[i].to === to) return suggestions[i].amount;
+    }
+    return 0;
+  }
+
   function submitSettlement() {
     var form = $('#settle-form');
     var group = findGroup(form.dataset.groupId);
@@ -841,8 +897,23 @@
     var dateVal = $('#settle-date').value;
 
     if (from === to) { showError(errorEl, 'Pick two different members.'); return; }
-    if (!(amount > 0)) { showError(errorEl, 'Please enter a valid amount greater than zero.'); $('#settle-amount').focus(); return; }
-    if (!dateVal) { showError(errorEl, 'Please pick a date.'); $('#settle-date').focus(); return; }
+    if (!(amount > 0)) { showError(errorEl, 'Please enter a valid amount greater than zero.', $('#settle-amount')); $('#settle-amount').focus(); return; }
+    if (!dateVal) { showError(errorEl, 'Please pick a date.', $('#settle-date')); $('#settle-date').focus(); return; }
+
+    /* Paying more than the outstanding debt flips the pair's balance and makes
+       the next settle-up suggestion point the wrong way, so cap it here. */
+    var owed = outstandingBetween(group, from, to);
+    if (owed <= 0) {
+      showError(errorEl, displayName(group, from) + ' does not owe ' + displayName(group, to) + ' anything.', $('#settle-amount'));
+      $('#settle-amount').focus();
+      return;
+    }
+    if (amount - owed > unitFor(group.currency) / 2) {
+      showError(errorEl, 'That is more than the ' + formatMoney(owed, group.currency) + ' outstanding. ' +
+        'Record ' + formatMoney(owed, group.currency) + ' or less.', $('#settle-amount'));
+      $('#settle-amount').focus();
+      return;
+    }
 
     var settlement = {
       id: uid('stl'),
@@ -883,8 +954,8 @@
       .map(function (l) { return l.trim(); })
       .filter(function (l) { return l.length > 0; });
 
-    if (!name) { showError(errorEl, 'Please give the group a name.'); $('#grp-name').focus(); return; }
-    if (!memberLines.length) { showError(errorEl, 'Add at least one member (the first one is you).'); $('#grp-members').focus(); return; }
+    if (!name) { showError(errorEl, 'Please give the group a name.', $('#grp-name')); $('#grp-name').focus(); return; }
+    if (!memberLines.length) { showError(errorEl, 'Add at least one member (the first one is you).', $('#grp-members')); $('#grp-members').focus(); return; }
 
     var group = {
       id: uid('grp'),
@@ -931,14 +1002,34 @@
 
   /* ============ Sidebar (mobile) ============ */
 
+  /* The sidebar only slides off-screen on narrow viewports; transform hides it
+     visually but leaves its links tabbable, so inert has to track the state. */
+  var sidebarQuery = window.matchMedia('(max-width: 900px)');
+
+  function syncSidebarState() {
+    var sidebar = $('#sidebar');
+    var toggle = $('[data-action="open-sidebar"]');
+    var offCanvas = sidebarQuery.matches && !document.body.classList.contains('sidebar-open');
+    sidebar.toggleAttribute('inert', offCanvas);
+    if (offCanvas) sidebar.setAttribute('aria-hidden', 'true');
+    else sidebar.removeAttribute('aria-hidden');
+    if (toggle) toggle.setAttribute('aria-expanded', String(!offCanvas && sidebarQuery.matches));
+  }
+
   function openSidebar() {
     document.body.classList.add('sidebar-open');
     $('#sidebar-backdrop').hidden = false;
+    syncSidebarState();
+    var firstLink = $('#sidebar').querySelector('a, button');
+    if (firstLink) firstLink.focus();
   }
 
   function closeSidebar() {
     document.body.classList.remove('sidebar-open');
     $('#sidebar-backdrop').hidden = true;
+    syncSidebarState();
+    var toggle = $('[data-action="open-sidebar"]');
+    if (toggle) toggle.focus();
   }
 
   /* ============ Events ============ */
@@ -1009,6 +1100,8 @@
       selectedGroupId = localStorage.getItem(SELECTED_KEY) || null;
     } catch (e) { /* ignore */ }
     bindEvents();
+    syncSidebarState();
+    sidebarQuery.addEventListener('change', syncSidebarState);
     $('#group-root').innerHTML = '<p class="loading-state">Loading your groups…</p>';
     loadState()
       .then(function () {
