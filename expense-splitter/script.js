@@ -45,6 +45,11 @@
 
   var state = null; /* { groups: Group[] } */
   var selectedGroupId = null;
+  var expenseFilters = { category: 'all', member: 'all', from: '', to: '' };
+
+  function resetExpenseFilters() {
+    expenseFilters = { category: 'all', member: 'all', from: '', to: '' };
+  }
 
   function saveState() {
     try {
@@ -335,7 +340,7 @@
     var hash = location.hash || '#/';
     if (hash.indexOf('#/app') === 0) {
       var m = /^#\/app\/g\/([\w-]+)/.exec(hash);
-      if (m && findGroup(m[1])) selectedGroupId = m[1];
+      if (m && findGroup(m[1]) && m[1] !== selectedGroupId) { selectedGroupId = m[1]; resetExpenseFilters(); }
       if (!findGroup(selectedGroupId)) selectedGroupId = state.groups.length ? state.groups[0].id : null;
       try { localStorage.setItem(SELECTED_KEY, selectedGroupId || ''); } catch (e) { /* ignore */ }
       showApp();
@@ -505,13 +510,106 @@
         '<p>Add your first shared expense and Expense Splitter keeps track of who owes what.</p>' +
         '<button class="btn btn-primary" type="button" data-action="open-expense">Add expense</button></div></section>';
     }
-    var sorted = group.expenses.slice().sort(function (a, b) {
+    var visible = visibleExpenses(group);
+    var sorted = visible.slice().sort(function (a, b) {
       return new Date(b.date) - new Date(a.date);
     });
-    var items = sorted.map(function (e) { return expenseItemHtml(group, e); }).join('');
+
+    var body = sorted.length
+      ? '<ul class="expense-list">' +
+        sorted.map(function (e) { return expenseItemHtml(group, e); }).join('') + '</ul>'
+      : '<div class="empty-state"><h3>No expenses match these filters</h3>' +
+        '<p>Widen the filters to see the rest of this group\'s spending.</p>' +
+        '<button class="btn btn-ghost" type="button" data-action="clear-filters">Clear filters</button></div>';
+
     return '<section aria-label="Expenses">' +
       '<h2 class="section-title" style="margin-bottom: var(--space-3)">Expenses</h2>' +
-      '<ul class="expense-list">' + items + '</ul></section>';
+      filtersHtml(group, visible) +
+      breakdownHtml(group, sorted) +
+      body + '</section>';
+  }
+
+  /* ---- Filtering & breakdown ---------------------------------------
+     Filters live in memory, not in storage: they describe how you are
+     looking at a group right now, not something worth persisting. */
+
+  function matchesFilters(e) {
+    if (expenseFilters.category !== 'all' && (e.category || 'Other') !== expenseFilters.category) return false;
+    if (expenseFilters.member !== 'all' && e.paidBy !== expenseFilters.member) return false;
+    if (expenseFilters.from && e.date.slice(0, 10) < expenseFilters.from) return false;
+    if (expenseFilters.to && e.date.slice(0, 10) > expenseFilters.to) return false;
+    return true;
+  }
+
+  function visibleExpenses(group) {
+    return group.expenses.filter(matchesFilters);
+  }
+
+  function filtersActive() {
+    return expenseFilters.category !== 'all' || expenseFilters.member !== 'all' ||
+      Boolean(expenseFilters.from) || Boolean(expenseFilters.to);
+  }
+
+  function filtersHtml(group, visible) {
+    var cats = CATEGORIES.map(function (c) {
+      return '<option value="' + escapeHtml(c) + '"' +
+        (expenseFilters.category === c ? ' selected' : '') + '>' + escapeHtml(c) + '</option>';
+    }).join('');
+    var members = group.members.map(function (m) {
+      return '<option value="' + escapeHtml(m.id) + '"' +
+        (expenseFilters.member === m.id ? ' selected' : '') + '>' + escapeHtml(m.name) + '</option>';
+    }).join('');
+
+    return '<div class="expense-filters" role="group" aria-label="Filter expenses">' +
+      '<label class="filter-field"><span class="filter-label">Category</span>' +
+      '<select id="filter-category" data-filter="category"><option value="all">All categories</option>' + cats + '</select></label>' +
+      '<label class="filter-field"><span class="filter-label">Paid by</span>' +
+      '<select id="filter-member" data-filter="member"><option value="all">Anyone</option>' + members + '</select></label>' +
+      '<label class="filter-field"><span class="filter-label">From</span>' +
+      '<input type="date" id="filter-from" data-filter="from" value="' + escapeHtml(expenseFilters.from) + '"></label>' +
+      '<label class="filter-field"><span class="filter-label">To</span>' +
+      '<input type="date" id="filter-to" data-filter="to" value="' + escapeHtml(expenseFilters.to) + '"></label>' +
+      (filtersActive()
+        ? '<button class="btn btn-ghost" type="button" data-action="clear-filters">Clear filters</button>'
+        : '') +
+      '<p class="filter-count" role="status">' +
+      (filtersActive()
+        ? 'Showing ' + visible.length + ' of ' + group.expenses.length + ' expenses'
+        : 'Showing all ' + group.expenses.length + ' expenses') +
+      '</p></div>';
+  }
+
+  /* Totals recompute from the filtered set, so the breakdown always
+     describes exactly what is listed below it. */
+  function breakdownHtml(group, visible) {
+    if (!visible.length) return '';
+
+    var totals = {};
+    var total = 0;
+    visible.forEach(function (e) {
+      var value = e.amount * (e.exchangeRate || 1);
+      var key = e.category || 'Other';
+      totals[key] = (totals[key] || 0) + value;
+      total += value;
+    });
+
+    var rows = Object.keys(totals).sort(function (a, b) { return totals[b] - totals[a]; }).map(function (cat) {
+      var share = total > 0 ? (totals[cat] / total) * 100 : 0;
+      return '<li class="breakdown-row">' +
+        '<span class="breakdown-swatch" aria-hidden="true" style="background:' +
+        escapeHtml(CATEGORY_COLORS[cat] || CATEGORY_COLORS.Other) + '"></span>' +
+        '<span class="breakdown-name">' + escapeHtml(cat) + '</span>' +
+        '<span class="breakdown-bar" aria-hidden="true"><span style="width:' + share.toFixed(1) + '%;background:' +
+        escapeHtml(CATEGORY_COLORS[cat] || CATEGORY_COLORS.Other) + '"></span></span>' +
+        '<span class="breakdown-amt">' + escapeHtml(formatMoney(roundTo(totals[cat], group.currency), group.currency)) +
+        ' <span class="breakdown-pct">' + share.toFixed(0) + '%</span></span>' +
+        '</li>';
+    }).join('');
+
+    return '<details class="breakdown" open>' +
+      '<summary>Spending breakdown · ' +
+      escapeHtml(formatMoney(roundTo(total, group.currency), group.currency)) + '</summary>' +
+      '<ul class="breakdown-list">' + rows + '</ul></details>';
   }
 
   function expenseItemHtml(group, e) {
@@ -1035,6 +1133,17 @@
   /* ============ Events ============ */
 
   function bindEvents() {
+    /* Filter controls are rebuilt on every render, so listen on the document
+       and read the intent off data-filter rather than rebinding each time. */
+    document.addEventListener('change', function (ev) {
+      var field = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-filter');
+      if (!field) return;
+      expenseFilters[field] = ev.target.value;
+      renderApp();
+      var again = document.getElementById(ev.target.id);
+      if (again) again.focus();
+    });
+
     document.addEventListener('click', function (ev) {
       var actionEl = ev.target.closest('[data-action]');
       if (actionEl) {
@@ -1044,6 +1153,7 @@
         else if (action === 'open-settle') openSettleDialog(null);
         else if (action === 'open-group') openGroupDialog();
         else if (action === 'reset-data') resetData();
+        else if (action === 'clear-filters') { resetExpenseFilters(); renderApp(); }
         else if (action === 'open-sidebar') openSidebar();
         else if (action === 'close-sidebar') closeSidebar();
         else if (action === 'close-dialog') closeDialog(actionEl.closest('dialog'));
