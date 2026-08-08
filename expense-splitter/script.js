@@ -18,6 +18,7 @@ import {
   computeBalances,
   suggestSettlements,
   outstandingBetween,
+  validateSplit,
 } from './js/money.js';
 
 (function () {
@@ -450,7 +451,7 @@ import {
 
   function expensesHtml(group) {
     if (!group.expenses.length) {
-      return '<section aria-label="Expenses"><h2 class="section-title" style="margin-bottom: var(--space-3)">Expenses</h2>' +
+      return '<section aria-label="Expenses"><h2 class="section-title section-title-tight">Expenses</h2>' +
         '<div class="empty-state"><h3>No expenses yet</h3>' +
         '<p>Add your first shared expense and Expense Splitter keeps track of who owes what.</p>' +
         '<button class="btn btn-primary" type="button" data-action="open-expense">Add expense</button></div></section>';
@@ -468,7 +469,7 @@ import {
         '<button class="btn btn-ghost" type="button" data-action="clear-filters">Clear filters</button></div>';
 
     return '<section aria-label="Expenses">' +
-      '<h2 class="section-title" style="margin-bottom: var(--space-3)">Expenses</h2>' +
+      '<h2 class="section-title section-title-tight">Expenses</h2>' +
       filtersHtml(group, visible) +
       breakdownHtml(group, sorted) +
       body + '</section>';
@@ -620,8 +621,8 @@ import {
         '<time datetime="' + escapeHtml(s.date) + '" title="' + escapeHtml(fullDate(s.date)) + '">' + escapeHtml(relativeDate(s.date)) + '</time>' +
         '</li>';
     }).join('');
-    return '<section aria-label="Settlement history" style="margin-top: var(--space-6)">' +
-      '<h2 class="section-title" style="margin-bottom: var(--space-3)">Settlements</h2>' +
+    return '<section class="settlement-history" aria-label="Settlement history">' +
+      '<h2 class="section-title section-title-tight">Settlements</h2>' +
       '<ul class="settle-list">' + items + '</ul></section>';
   }
 
@@ -796,6 +797,7 @@ import {
      `rates`, never the network. */
 
   var rates = { table: RATE_PER_USD, source: 'fallback', fetchedAt: null };
+  var rateGaps = []; /* currencies the provider did not return */
 
   function readCachedRates() {
     try {
@@ -810,7 +812,10 @@ import {
   }
 
   function rateStatusText() {
-    if (rates.source === 'live') return 'Live rates, updated ' + relativeDate(rates.fetchedAt) + '.';
+    var gapNote = rateGaps.length
+      ? ' No live rate for ' + rateGaps.join(', ') + ' — using built-in values for those.'
+      : '';
+    if (rates.source === 'live') return 'Live rates, updated ' + relativeDate(rates.fetchedAt) + '.' + gapNote;
     if (rates.source === 'cache') return 'Cached rates from ' + relativeDate(rates.fetchedAt) + ' — may be outdated.';
     return 'Live rates unavailable — using built-in rates, which may be outdated.';
   }
@@ -841,11 +846,25 @@ import {
         return res.json();
       })
       .then(function (data) {
-        if (!data || !data.rates || !data.rates.EUR) throw new Error('Unexpected rates payload');
+        if (!data || !data.rates) throw new Error('Unexpected rates payload');
+
+        /* A currency missing from the payload used to fall through to 1,
+           which silently converts at par — a far worse outcome than an
+           openly stale rate. Anything absent keeps its built-in value and is
+           reported, so the conversion is never quietly wrong. */
         var table = { USD: 1 };
+        var missing = [];
         CURRENCIES.forEach(function (c) {
-          if (typeof data.rates[c] === 'number') table[c] = data.rates[c];
+          var v = data.rates[c];
+          if (typeof v === 'number' && isFinite(v) && v > 0) {
+            table[c] = v;
+          } else if (c !== 'USD') {
+            table[c] = RATE_PER_USD[c];
+            missing.push(c);
+          }
         });
+        if (missing.length === CURRENCIES.length - 1) throw new Error('Rates payload had no usable currencies');
+        rateGaps = missing;
         rates = { table: table, source: 'live', fetchedAt: Date.now() };
         try {
           localStorage.setItem(RATES_CACHE_KEY, JSON.stringify({ table: table, fetchedAt: rates.fetchedAt }));
@@ -857,6 +876,26 @@ import {
         applyRateStatus();
         return rates;
       });
+  }
+
+  /* validateSplit reports what is wrong; turning that into a sentence is the
+     view's job, so the rules stay testable without any copy in them. */
+  function splitErrorText(problem, group, amount, currency, members) {
+    var named = problem.memberId
+      ? memberById(group, problem.memberId).name
+      : '';
+    switch (problem.code) {
+      case 'no-members': return 'Select at least one member to split with.';
+      case 'bad-amount': return 'Please enter a valid amount greater than zero.';
+      case 'negative-or-nan': return 'Split values must be zero or more. Check ' + named + '.';
+      case 'percentage-over-100': return 'A percentage cannot be more than 100%. Check ' + named + '.';
+      case 'percentage-sum': return 'Percentages must add up to 100%. Currently: ' + roundTo(problem.sum, currency) + '%.';
+      case 'shares-not-positive': return 'Shares must add up to more than zero.';
+      case 'exact-mismatch':
+        return 'Exact amounts must add up to ' + formatMoney(amount, currency) +
+          '. Currently: ' + formatMoney(roundTo(problem.sum, currency), currency) + '.';
+      default: return 'Please check the split values.';
+    }
   }
 
   function submitExpense() {
@@ -880,44 +919,10 @@ import {
     if (!dateVal) { showError(errorEl, 'Please pick a date.', $('#exp-date')); $('#exp-date').focus(); return; }
     if (!members.length) { showError(errorEl, 'Select at least one member to split with.'); return; }
 
-    /* A correct total can still hide a nonsense line: 60 / −10 / 50 sums to 100
-       but means someone is owed a negative share. Check each value, then the
-       total. NaN and Infinity are rejected here too, since they would otherwise
-       propagate silently into every balance. */
-    if (type === 'exact' || type === 'percentage' || type === 'shares') {
-      var badMember = members.find(function (m) {
-        var v = inputs[m.id];
-        return v !== undefined && (!isFinite(v) || v < 0);
-      });
-      if (badMember) {
-        showError(errorEl, 'Split values must be zero or more. Check ' + badMember.name + '.');
-        return;
-      }
-    }
-
-    if (type === 'exact') {
-      var sum = members.reduce(function (a, m) { return a + (inputs[m.id] || 0); }, 0);
-      if (Math.abs(sum - amount) > unitFor(currency) / 2) {
-        showError(errorEl, 'Exact amounts must add up to ' + formatMoney(amount, currency) +
-          '. Currently: ' + formatMoney(roundTo(sum, currency), currency) + '.');
-        return;
-      }
-    }
-    if (type === 'percentage') {
-      var overHundred = members.find(function (m) { return (inputs[m.id] || 0) > 100; });
-      if (overHundred) {
-        showError(errorEl, 'A percentage cannot be more than 100%. Check ' + overHundred.name + '.');
-        return;
-      }
-      var psum = members.reduce(function (a, m) { return a + (inputs[m.id] || 0); }, 0);
-      if (Math.abs(psum - 100) > 0.01) {
-        showError(errorEl, 'Percentages must add up to 100%. Currently: ' + roundTo(psum, currency) + '%.');
-        return;
-      }
-    }
-    if (type === 'shares') {
-      var ssum = members.reduce(function (a, m) { return a + (inputs[m.id] || 0); }, 0);
-      if (!(ssum > 0)) { showError(errorEl, 'Shares must add up to more than zero.'); return; }
+    var problem = validateSplit({ type: type, amount: amount, currency: currency, members: members, inputs: inputs });
+    if (problem) {
+      showError(errorEl, splitErrorText(problem, group, amount, currency, members));
+      return;
     }
 
     var rate = 1;
