@@ -1450,3 +1450,13 @@ time,
 .rate-status[data-source="cache"] {
   color: var(--color-warning, var(--color-text-secondary));
 }
+
+/* Section headings that sit directly above a control strip need less
+   breathing room than a heading followed by prose. */
+.section-title-tight {
+  margin-bottom: var(--space-3);
+}
+
+.settlement-history {
+  margin-top: var(--space-6);
+}
