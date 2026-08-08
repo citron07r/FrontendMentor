@@ -1439,3 +1439,14 @@ time,
     display: none;
   }
 }
+
+.rate-status {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+.rate-status[data-source="fallback"],
+.rate-status[data-source="cache"] {
+  color: var(--color-warning, var(--color-text-secondary));
+}

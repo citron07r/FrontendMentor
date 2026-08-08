@@ -33,8 +33,12 @@
     'Transport': '#06b6d4',
     'Utilities': '#84cc16'
   };
-  /* Static fallback rates (units per 1 USD), only used as editable defaults
-     for new expenses — no live currency API in this build. */
+  /* Live rates come from Frankfurter (ECB data, no API key, so nothing secret
+     ships in a static build). The per-USD figures below are the fallback when
+     the network is unavailable, so expense entry is never blocked. */
+  var RATES_URL = 'https://api.frankfurter.dev/v1/latest?base=USD';
+  var RATES_CACHE_KEY = 'expense-splitter:rates';
+  var RATES_MAX_AGE_MS = 12 * 60 * 60 * 1000; /* rates move slowly; refetch twice a day */
   var RATE_PER_USD = { USD: 1, EUR: 0.92, GBP: 0.79, JPY: 149, CAD: 1.36, AUD: 1.52, CHF: 0.88, CNY: 7.2, INR: 83, MXN: 18.2 };
   var AVATAR_PALETTE = ['#5b8def', '#36d29a', '#e3b341', '#f2606a', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
 
@@ -833,13 +837,85 @@
     var rate = defaultRate(currency, group.currency);
     $('#exp-rate').value = rate;
     $('#rate-hint').textContent = '1 ' + currency + ' ≈ ' + rate + ' ' + group.currency;
+    applyRateStatus();
   }
 
   function defaultRate(fromCurrency, toCurrency) {
-    var from = RATE_PER_USD[fromCurrency] || 1;
-    var to = RATE_PER_USD[toCurrency] || 1;
+    var table = rates.table;
+    var from = table[fromCurrency] || 1;
+    var to = table[toCurrency] || 1;
     var rate = to / from;
     return Math.round(rate * 1000000) / 1000000;
+  }
+
+  /* ============ Exchange rates ============
+
+     One place owns rate data: a cached fetch with an explicit provenance flag,
+     so the UI can say where a number came from. Rendering code only ever reads
+     `rates`, never the network. */
+
+  var rates = { table: RATE_PER_USD, source: 'fallback', fetchedAt: null };
+
+  function readCachedRates() {
+    try {
+      var raw = localStorage.getItem(RATES_CACHE_KEY);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || !parsed.table || !parsed.fetchedAt) return null;
+      return parsed;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function rateStatusText() {
+    if (rates.source === 'live') return 'Live rates, updated ' + relativeDate(rates.fetchedAt) + '.';
+    if (rates.source === 'cache') return 'Cached rates from ' + relativeDate(rates.fetchedAt) + ' — may be outdated.';
+    return 'Live rates unavailable — using built-in rates, which may be outdated.';
+  }
+
+  function applyRateStatus() {
+    var el = $('#rate-status');
+    if (!el) return;
+    el.textContent = rateStatusText();
+    el.dataset.source = rates.source;
+  }
+
+  /* Never rejects: a failed refresh degrades to cache, then to the built-in
+     table, because being unable to reach the API must not stop someone
+     logging an expense. */
+  function refreshRates() {
+    var cached = readCachedRates();
+    var fresh = cached && (Date.now() - cached.fetchedAt) < RATES_MAX_AGE_MS;
+
+    if (cached) {
+      rates = { table: cached.table, source: 'cache', fetchedAt: cached.fetchedAt };
+      applyRateStatus();
+      if (fresh) return Promise.resolve(rates);
+    }
+
+    return fetch(RATES_URL)
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        if (!data || !data.rates || !data.rates.EUR) throw new Error('Unexpected rates payload');
+        var table = { USD: 1 };
+        CURRENCIES.forEach(function (c) {
+          if (typeof data.rates[c] === 'number') table[c] = data.rates[c];
+        });
+        rates = { table: table, source: 'live', fetchedAt: Date.now() };
+        try {
+          localStorage.setItem(RATES_CACHE_KEY, JSON.stringify({ table: table, fetchedAt: rates.fetchedAt }));
+        } catch (e) { /* cache is an optimisation, not a requirement */ }
+        applyRateStatus();
+        return rates;
+      })
+      .catch(function () {
+        applyRateStatus();
+        return rates;
+      });
   }
 
   function submitExpense() {
@@ -1210,6 +1286,7 @@
       selectedGroupId = localStorage.getItem(SELECTED_KEY) || null;
     } catch (e) { /* ignore */ }
     bindEvents();
+    refreshRates();
     syncSidebarState();
     sidebarQuery.addEventListener('change', syncSidebarState);
     $('#group-root').innerHTML = '<p class="loading-state">Loading your groups…</p>';
