@@ -1,163 +1,91 @@
 # Expense Splitter
 
-Split shared costs with friends, roommates, and travel companions. Flexible split types, multi-currency support, and clear settlement tracking keep everyone square.
+Split shared costs with friends, roommates, and travel companions: log an expense, choose how it divides, and the app keeps track of who owes whom until everyone is square.
 
-![Preview of Expense Splitter](./preview.jpg)
+This is a solution to the [Expense Splitter product challenge](https://www.frontendmentor.io) on Frontend Mentor. The original brief is kept in [BRIEF.md](./BRIEF.md).
 
-*This is a design concept image, not the intended design. There's no Figma file, so the design decisions are yours.*
+## Table of contents
 
-## The challenge
+- [Overview](#overview)
+  - [Screenshot](#screenshot)
+  - [Links](#links)
+- [Running the project](#running-the-project)
+- [Built with](#built-with)
+- [Features](#features)
+- [Implementation notes](#implementation-notes)
+- [What I learned](#what-i-learned)
+- [Continued development](#continued-development)
+- [Author](#author)
 
-Expense Splitter is a **Product Challenge** on [Frontend Mentor](https://www.frontendmentor.io). There's no Figma file, so you make the design decisions. You ship a real, deployed product with a database, authentication, and a live currency-conversion API. The result is a portfolio piece that shows how you think as much as what you can build.
+## Overview
 
-### Four pillars
+Five sample groups load on first run — a trip, a flat share, an office lunch crew, a group gift, and a camping weekend — chosen so the app is exercised by real edge cases: a multi-currency trip, a group where only two members still owe each other, and expenses split four different ways.
 
-| Pillar | What it means for Expense Splitter |
-|--------|----------------------------|
-| **Product thinking** | You design the expense entry flow, the group dashboard, and how balances, debts, and settlements are communicated clearly. |
-| **Design taste & craft** | The brand kit gives you colors, type, and spacing. The layouts, balance displays, and settlement flows are yours. |
-| **AI collaboration** | The project includes AI context files (`AGENTS.md`, `CLAUDE.md`) that give tools like Claude full project context. Lean into AI across planning, building, and polishing. |
-| **Shipping real products** | Deploy to a live URL. Real database, real auth, and a live exchange-rate API. The project works end-to-end for any visitor. |
+This is the **frontend-only path** described in `spec/technical-requirements.md`: no accounts, no server, `localStorage` in place of a database. Everything else in the brief still applies.
 
-## What you're building
+### Screenshot
 
-A shared expense tool for groups: roommates, trip companions, friend groups. You log who paid for what, split costs flexibly, and give everyone a clear path to settling up.
+![The Apartment 4B group: expense list, balances, and settle-up suggestions](./screenshot-desktop.png)
 
-- **Group management**: create groups, add members (including people without accounts), and set a default currency
-- **Flexible splits**: equal, exact amounts, percentages, and shares, with validation and clean rounding
-- **Multi-currency support**: log expenses in any currency with real exchange rates, converted to the group's default
-- **Balances & settlements**: see who owes whom, suggest pairwise payments, and handle partial settlements
-- **Categories & filtering**: organize spending and break it down by category, date, and member
-- **Landing page**: a professional entry point with guest access
-- **Guest experience**: a fully explorable demo, no account required
+### Links
 
-### The guest experience
+- Live Site URL: https://citron07r.github.io/FrontendMentor/expense-splitter/
 
-When you share this project, whether in your portfolio, a job application, or a social post, the person clicking your link isn't going to create an account. Guest mode is what lets them see your work instead of a login wall.
+## Running the project
 
-Your landing page includes a "Try as Guest" button. Guests land on a dashboard pre-loaded with 5 groups and 43 expenses: a two-week trip to Japan with mixed-currency spending (USD, JPY, EUR), a roommate household with recurring rent, an office lunch crew, a one-off birthday-gift collection, and a camping weekend. Mixed currencies, every split type, and a mix of settled and outstanding debts are all there to explore, so a visitor sees the product working within seconds.
+No build step and no dependencies. The app fetches its seed data, so it needs to be served over HTTP rather than opened from the filesystem:
 
-## Project structure
-
-```
-expense-splitter/
-├── spec/
-│   ├── product-definition.md      # What, who, why
-│   ├── core-requirements.md       # 15 features: 11 core + 4 stretch
-│   ├── design-challenges.md       # 3 features YOU design
-│   ├── technical-requirements.md  # Database, auth, currency API, deployment, performance
-│   └── differentiators.md         # 4 enhancements (pick 1-2)
-├── guidance/
-│   ├── brand-kit.md               # Colors, typography, spacing, icons, mood
-│   ├── patterns.md                # UI/UX do's and don'ts
-│   └── accessibility.md           # WCAG checklist
-├── starter/
-│   ├── tokens.css                 # CSS custom properties
-│   └── tailwind.css               # Optional Tailwind v4 config
-├── data/
-│   ├── sample-groups.json         # 5 groups, 43 expenses, intentional edge cases
-│   └── README.md                  # Data edge case documentation
-├── .env.example                   # Environment variable template
-├── AGENTS.md                      # AI collaboration context
-├── CLAUDE.md                      # Points to AGENTS.md
-└── README-template.md             # Template for your solution README
+```bash
+python3 -m http.server 8000
 ```
 
-## Getting started
+Then visit http://localhost:8000/expense-splitter/.
 
-1. **Read the spec.** Start with `spec/product-definition.md`, then `core-requirements.md`. Understand what you're building before you write code.
+## Built with
 
-2. **Review the brand kit.** `guidance/brand-kit.md` gives you the visual foundation: colors, type, and spacing. Use it and the preview image as your starting point. Or, if you have a clear design vision of your own, create your own brand kit and go in a different direction. The starter CSS tokens and optional Tailwind config are ready to use.
+- Semantic HTML with `header`, `aside`, `main`, and native `<dialog>` overlays
+- CSS custom properties, split into `tokens.css` (the design system) and `style.css` (components)
+- Vanilla JavaScript, no framework and no bundler
+- Hash-based routing for the landing page, group list, and per-group views
+- `localStorage` for persistence, seeded from `data/sample-groups.json`
 
-3. **Explore the patterns.** `guidance/patterns.md` provides UI/UX do's and don'ts that help you make strong design decisions without a Figma file.
+`starter/` holds the unmodified starter assets shipped with the challenge. They are kept for reference and are **not** loaded by the app — the live styles are `tokens.css` and `style.css` at the project root.
 
-4. **Choose your stack.** This challenge is framework-agnostic: Next.js, Nuxt, SvelteKit, Remix, Astro, or whatever you're most productive with. The recommended path is full-stack (database plus auth), but there's a **frontend-only alternative** if you want to focus on UI/UX and frontend engineering. See `spec/technical-requirements.md` for details. Either way, the currency-conversion API integration stays.
+## Features
 
-5. **Set up your AI workflow.** This project is designed for AI collaboration. `AGENTS.md` and `CLAUDE.md` give AI tools full context about the project: specs, guidance, and collaboration approach. We recommend working with AI across every phase, from planning to building to polishing.
+- **Four split types** — equal, exact amounts, percentages, and shares
+- **Multi-currency expenses** with the rate stored at entry time, so historical balances stay stable
+- **Balances and settle-up** — greedy pairwise netting reduces the debts to the fewest payments that clear the group
+- **Recording settlements**, capped at the outstanding debt for that pair
+- **Filtering and a spending breakdown** by category, member, and date range
+- **Light and dark themes**, remembered across visits
+- **Keyboard support throughout** — skip link, focus-managed dialogs, an inert off-canvas sidebar, and errors tied to the fields that caused them
 
-6. **Pick your differentiators.** Read `spec/differentiators.md` and choose 1-2 that match your interests. These are what make the project _yours_.
+## Implementation notes
 
-7. **Start building.** Begin with the foundation (auth, database, core data model), then layer in features. The core-requirements spec is your guide. Core features give you a solid product; stretch features take it to the next level.
+**Money is integer-safe.** Amounts are converted to minor units before splitting, and the leftover unit is distributed one at a time. `$10.00` across three people gives `3.34 / 3.33 / 3.33`, not three lots of `3.33` with a cent unaccounted for. Zero-decimal currencies (JPY and friends) use a unit of 1 rather than 0.01.
 
-8. **Document as you go.** Use `README-template.md` for your solution README. Record design decisions, technical trade-offs, and lessons learned as they happen, not after.
+**Two invariants hold everywhere.** Every expense's splits sum to its amount, and every group's balances sum to zero. They are worth re-checking after any change to the money code, because a violation is silent — the UI still renders, it is just wrong.
 
-## Working with AI
+**Balances are derived, never stored.** `computeBalances()` recomputes from expenses and settlements on every render, so there is no cached total to drift out of sync.
 
-Product Challenges are designed for AI collaboration. The `AGENTS.md` and `CLAUDE.md` files give AI tools like Claude, Cursor, and Copilot full project context, including the spec, brand kit, and collaboration guidelines. Load them at the start of each session.
+## What I learned
 
-Lean on AI for implementation, but don't accept everything it gives you. The design decisions are yours, and so is the code quality. Review what gets generated, understand it, and make sure it's something you'd be happy putting your name on. The 3 design-it-yourself features (Expense Entry UX, Group Dashboard Design, Settlement Flow Design) are where your product thinking matters most.
+Validating a total is not the same as validating its parts. Exact splits of `110 / −10 / 0` sum to exactly `100` and passed the original check, while meaning that one person is owed a negative share. Each value needs checking on its own, including for `NaN` and `Infinity`, which otherwise propagate silently into every balance in the group.
 
-## Your solution repo
+Settlements need an upper bound as well as a lower one. Recording a payment larger than the outstanding debt flipped the pair's balance and made the next settle-up suggestion point in the opposite direction — the app confidently telling you the wrong person owes money. The fix compares the amount against the current pairwise debt before saving.
 
-The `.gitignore` is pre-configured to exclude challenge reference files (`spec/`, `guidance/`, `AGENTS.md`, etc.) from your solution repo. These files are your development reference. They stay on your machine for AI sessions and planning, but they don't belong in the finished product.
+`transform` hides pixels, not tab order. The off-canvas sidebar was translated off screen but its eight links stayed focusable, so a keyboard user tabbed through an invisible menu. `inert` while closed, plus `aria-expanded` on the toggle, fixes both the tab order and what a screen reader reports.
 
-Your public repo should contain:
+A skip link has to know which view it is in. With two routed views each shipping their own `<main>`, a fixed `href="#main"` sent keyboard users into the hidden landing page once the app was open.
 
-- Your application code
-- Your completed README (rename `README-template.md` → `README.md`)
-- The sample data files (needed for the guest experience)
-- The starter tokens (consumed by your build)
+## Continued development
 
-This is how real products work: you reference the spec during development, you ship the product.
+- Replace the static fallback rates with a live exchange-rate API, including caching and an "offline rates" indicator
+- Extend the test suite beyond the money core to routing and rendering
+- Revisit the greedy settle-up algorithm: it minimises the number of payments but does not consider who would rather pay whom
 
-## Learning outcomes
+## Author
 
-By completing this challenge, you'll have demonstrated:
-
-- Building a full product from a spec, rather than following a tutorial
-- Making genuine product and design decisions with documented reasoning
-- Shipping a deployed app with a real database, authentication, and a live external API
-- Modeling group expenses, flexible split types, and multi-currency balances correctly
-- Handling real financial edge cases: rounding, currency conversion, and settlement math
-- Creating a compelling guest experience with realistic, pre-loaded data
-- Writing a professional README that showcases your thinking process
-
-## Key design moments
-
-These screens are where your design taste will be most visible:
-
-1. **Expense entry.** The most frequent action in the app. The "fast path" for the common case and the transition to advanced split types define how the product feels day to day.
-2. **Group dashboard.** The home base for each group. The information hierarchy (personal balance, group summary, recent expenses, what to settle) shapes the whole experience.
-3. **Settlement flow.** The payoff moment. Making "who owes whom" clear, trustworthy, and satisfying to resolve is where the product earns its keep.
-4. **Landing page.** The first impression. It should immediately communicate what the product does and why it matters.
-
-## Deploying your project
-
-Product Challenges require a live, publicly accessible URL. Recommended hosts:
-
-- [Vercel](https://vercel.com/)
-- [Netlify](https://www.netlify.com/)
-- [Render](https://render.com/)
-- [Fly.io](https://fly.io/)
-
-Make sure your environment variables are configured correctly and no secrets are exposed, especially your currency API key. Test your deployed URL in an incognito window before submitting, especially the guest experience.
-
-For more guidance, see our [hosting guide](https://www.frontendmentor.io/guides/hosting-your-solution).
-
-## Submitting your solution
-
-Submit your solution on the platform for the rest of the community to see. Follow our [guide to submitting solutions](https://www.frontendmentor.io/guides/how-to-submit-solutions) for the full process.
-
-When submitting, you'll need:
-
-- **Live site URL.** Submit the URL to your guest experience (e.g., `your-app.vercel.app/guest`), not the landing page. This makes sure our solution reporters analyze your product code rather than the homepage. On the frontend-only path there's no separate guest route, so submit your app's dashboard URL instead. Test in incognito first.
-- **Repository URL.** A public repo with your solution code and completed README.
-
-For your retrospective, Product Challenges give you a lot to write about: design decisions, AI collaboration, technical trade-offs. Be specific about what you're proud of and where you'd like feedback. See our [guide to writing effective retrospectives](https://www.frontendmentor.io/guides/write-an-effective-retrospective) for tips.
-
-## Sharing your solution
-
-Product Challenges create portfolio pieces worth sharing beyond the platform:
-
-1. Share your solution page in the **#finished-projects** channel of our [community](https://www.frontendmentor.io/community).
-2. Post on LinkedIn or X, including both your live URL and repo link. The guest experience means anyone clicking your link sees the product immediately.
-3. Add it to your portfolio. See our [guide to using challenges in your portfolio](https://www.frontendmentor.io/guides/use-challenges-in-your-portfolio).
-4. Blog about your experience. The design decisions, AI collaboration, and technical challenges make for compelling content. Great platforms to write on are [dev.to](https://dev.to/), [Hashnode](https://hashnode.com/), and [CodeNewbie](https://community.codenewbie.org/).
-
-## Questions?
-
-If anything in the spec is unclear or you want to discuss the challenge, join our [Discord community](https://www.frontendmentor.io/community).
-
-## Got feedback for us?
-
-We love receiving feedback! If you have anything you'd like to mention, please email hi[at]frontendmentor[dot]io.
+- GitHub - [@citron07r](https://github.com/citron07r)
+- Frontend Mentor - [@citron07r](https://www.frontendmentor.io/profile/citron07r)
