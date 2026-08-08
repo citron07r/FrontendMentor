@@ -1,0 +1,1030 @@
+/*
+  Expense Splitter — frontend-only app.
+
+  Data flow: on first run the sample dataset is fetched from
+  data/sample-groups.json and seeded into localStorage. Every mutation
+  (new expense, settlement, group, reset) persists back to localStorage,
+  so changes survive reloads. No backend, no auth, no live currency API:
+  each expense stores the exchange rate used at entry time.
+*/
+'use strict';
+
+(function () {
+  /* ============ Constants ============ */
+
+  var STORAGE_KEY = 'expense-splitter:data';
+  var THEME_KEY = 'expense-splitter:theme';
+  var SELECTED_KEY = 'expense-splitter:selected-group';
+
+  var CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'INR', 'MXN'];
+  var ZERO_DECIMAL = { JPY: true, KRW: true, VND: true, CLP: true, ISK: true };
+  var CATEGORIES = [
+    'Accommodation', 'Entertainment', 'Food & Drink', 'Groceries',
+    'Housing', 'Other', 'Shopping', 'Transport', 'Utilities'
+  ];
+  var CATEGORY_COLORS = {
+    'Accommodation': '#8b5cf6',
+    'Entertainment': '#ec4899',
+    'Food & Drink': '#f59e0b',
+    'Groceries': '#10b981',
+    'Housing': '#3b82f6',
+    'Other': '#8b94a6',
+    'Shopping': '#f43f5e',
+    'Transport': '#06b6d4',
+    'Utilities': '#84cc16'
+  };
+  /* Static fallback rates (units per 1 USD), only used as editable defaults
+     for new expenses — no live currency API in this build. */
+  var RATE_PER_USD = { USD: 1, EUR: 0.92, GBP: 0.79, JPY: 149, CAD: 1.36, AUD: 1.52, CHF: 0.88, CNY: 7.2, INR: 83, MXN: 18.2 };
+  var AVATAR_PALETTE = ['#5b8def', '#36d29a', '#e3b341', '#f2606a', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
+
+  /* Balances below half a cent (in group currency) are treated as settled. */
+  var EPSILON = 0.005;
+
+  /* ============ State ============ */
+
+  var state = null; /* { groups: Group[] } */
+  var selectedGroupId = null;
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      /* storage full or unavailable: the app keeps working in memory */
+    }
+  }
+
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.groups) && parsed.groups.length) {
+          state = parsed;
+          return Promise.resolve();
+        }
+      }
+    } catch (e) { /* corrupted storage: reseed from sample data */ }
+    return fetch('data/sample-groups.json')
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        state = { groups: data.groups };
+        saveState();
+      });
+  }
+
+  function findGroup(id) {
+    if (!state) return null;
+    for (var i = 0; i < state.groups.length; i++) {
+      if (state.groups[i].id === id) return state.groups[i];
+    }
+    return null;
+  }
+
+  function currentGroup() {
+    return findGroup(selectedGroupId) || state.groups[0] || null;
+  }
+
+  function uid(prefix) {
+    return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  /* ============ Money & formatting ============ */
+
+  function decimalsFor(currency) {
+    return ZERO_DECIMAL[currency] ? 0 : 2;
+  }
+
+  function unitFor(currency) {
+    return ZERO_DECIMAL[currency] ? 1 : 0.01;
+  }
+
+  function roundTo(amount, currency) {
+    var f = Math.pow(10, decimalsFor(currency));
+    return Math.round(amount * f) / f;
+  }
+
+  var formatters = {};
+  function formatMoney(amount, currency) {
+    var key = currency || 'USD';
+    if (!formatters[key]) {
+      try {
+        formatters[key] = new Intl.NumberFormat('en-US', { style: 'currency', currency: key });
+      } catch (e) {
+        formatters[key] = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+      }
+    }
+    return formatters[key].format(amount);
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function fullDate(iso) {
+    var d = new Date(iso);
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  function relativeDate(iso) {
+    var then = new Date(iso).getTime();
+    var now = Date.now();
+    var days = Math.floor((now - then) / 86400000);
+    if (days <= 0) return 'today';
+    if (days === 1) return 'yesterday';
+    if (days < 7) return days + 'd ago';
+    if (days < 30) return Math.floor(days / 7) + 'w ago';
+    if (days < 365) return Math.floor(days / 30) + 'mo ago';
+    return fullDate(iso);
+  }
+
+  function memberById(group, id) {
+    for (var i = 0; i < group.members.length; i++) {
+      if (group.members[i].id === id) return group.members[i];
+    }
+    return { id: id, name: 'Unknown', avatarColor: '#8b94a6' };
+  }
+
+  function youMember(group) {
+    return group.members[0] || null;
+  }
+
+  function displayName(group, id) {
+    var you = youMember(group);
+    if (you && id === you.id) return 'you';
+    return memberById(group, id).name;
+  }
+
+  function avatarTextColor(hex) {
+    var m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return '#ffffff';
+    var n = parseInt(m[1], 16);
+    var r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    var luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.6 ? '#131a26' : '#ffffff';
+  }
+
+  function avatarHtml(member, large) {
+    var initial = (member.name || '?').trim().charAt(0).toUpperCase();
+    return '<span class="avatar' + (large ? ' avatar-lg' : '') + '" aria-hidden="true" style="background:' +
+      escapeHtml(member.avatarColor) + ';color:' + avatarTextColor(member.avatarColor) + '">' +
+      escapeHtml(initial) + '</span>';
+  }
+
+  /* ============ Balance math ============ */
+
+  /* Net balance per member in the group's currency.
+     Positive: the member is owed money. Negative: the member owes money. */
+  function computeBalances(group) {
+    var bal = {};
+    group.members.forEach(function (m) { bal[m.id] = 0; });
+    group.expenses.forEach(function (e) {
+      var rate = e.exchangeRate || 1;
+      bal[e.paidBy] = (bal[e.paidBy] || 0) + e.amount * rate;
+      e.splits.forEach(function (s) {
+        bal[s.memberId] = (bal[s.memberId] || 0) - s.amount * rate;
+      });
+    });
+    (group.settlements || []).forEach(function (s) {
+      var rate = s.exchangeRate || 1;
+      bal[s.from] = (bal[s.from] || 0) + s.amount * rate;
+      bal[s.to] = (bal[s.to] || 0) - s.amount * rate;
+    });
+    return bal;
+  }
+
+  /* Greedy pairwise netting: largest debtor pays largest creditor. */
+  function suggestSettlements(group, bal) {
+    var debtors = [], creditors = [];
+    Object.keys(bal).forEach(function (id) {
+      var v = bal[id];
+      if (v < -EPSILON) debtors.push({ id: id, amt: -v });
+      else if (v > EPSILON) creditors.push({ id: id, amt: v });
+    });
+    debtors.sort(function (a, b) { return b.amt - a.amt; });
+    creditors.sort(function (a, b) { return b.amt - a.amt; });
+    var out = [];
+    var i = 0, j = 0;
+    while (i < debtors.length && j < creditors.length) {
+      var pay = Math.min(debtors[i].amt, creditors[j].amt);
+      out.push({ from: debtors[i].id, to: creditors[j].id, amount: roundTo(pay, group.currency) });
+      debtors[i].amt -= pay;
+      creditors[j].amt -= pay;
+      if (debtors[i].amt < EPSILON) i++;
+      if (creditors[j].amt < EPSILON) j++;
+    }
+    return out;
+  }
+
+  /* ============ Split engine ============ */
+
+  /* Deterministic rounding: split `amount` into integer currency units and
+     distribute leftover units one by one, so splits always sum to the total. */
+  function distributeUnits(totalUnits, weights) {
+    var weightSum = weights.reduce(function (a, b) { return a + b; }, 0);
+    var shares = weights.map(function (w) {
+      var exact = weightSum > 0 ? (totalUnits * w) / weightSum : totalUnits / weights.length;
+      return { base: Math.floor(exact), frac: exact - Math.floor(exact) };
+    });
+    var assigned = shares.reduce(function (a, s) { return a + s.base; }, 0);
+    var remainder = totalUnits - assigned;
+    var order = shares.map(function (s, idx) { return idx; })
+      .sort(function (a, b) { return shares[b].frac - shares[a].frac || a - b; });
+    for (var k = 0; k < remainder; k++) shares[order[k % order.length]].base += 1;
+    return shares.map(function (s) { return s.base; });
+  }
+
+  function computeSplits(splitType, amount, currency, members, inputs) {
+    var unit = unitFor(currency);
+    var totalUnits = Math.round(amount / unit);
+    var ids = members.map(function (m) { return m.id; });
+    if (!ids.length) return [];
+    var units, i;
+
+    if (splitType === 'exact') {
+      return members.map(function (m) {
+        return { memberId: m.id, amount: roundTo(inputs[m.id] || 0, currency) };
+      });
+    }
+    if (splitType === 'percentage') {
+      units = distributeUnits(totalUnits, members.map(function (m) { return inputs[m.id] || 0; }));
+      return members.map(function (m, idx) {
+        return { memberId: m.id, amount: units[idx] * unit, percentage: inputs[m.id] || 0 };
+      });
+    }
+    if (splitType === 'shares') {
+      units = distributeUnits(totalUnits, members.map(function (m) { return inputs[m.id] || 0; }));
+      return members.map(function (m, idx) {
+        return { memberId: m.id, amount: units[idx] * unit, shares: inputs[m.id] || 0 };
+      });
+    }
+    /* equal */
+    units = distributeUnits(totalUnits, members.map(function () { return 1; }));
+    return members.map(function (m, idx) {
+      return { memberId: m.id, amount: units[idx] * unit };
+    });
+  }
+
+  /* ============ DOM helpers ============ */
+
+  function $(sel) { return document.querySelector(sel); }
+
+  function announce(msg) {
+    var el = $('#announcer');
+    if (!el) return;
+    el.textContent = '';
+    setTimeout(function () { el.textContent = msg; }, 30);
+  }
+
+  function showError(el, msg) {
+    if (!el) return;
+    if (!msg) { el.hidden = true; el.textContent = ''; return; }
+    el.textContent = msg;
+    el.hidden = false;
+  }
+
+  function openDialog(dialog) {
+    if (!dialog || dialog.open) return;
+    dialog.showModal();
+  }
+
+  function closeDialog(dialog) {
+    if (dialog && dialog.open) dialog.close();
+  }
+
+  /* ============ Theme ============ */
+
+  function effectiveTheme() {
+    var t = document.documentElement.dataset.theme;
+    if (t === 'dark' || t === 'light') return t;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  function toggleTheme() {
+    var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* ignore */ }
+    announce(next === 'dark' ? 'Dark theme on' : 'Light theme on');
+  }
+
+  /* ============ Routing ============ */
+
+  function route() {
+    var hash = location.hash || '#/';
+    if (hash.indexOf('#/app') === 0) {
+      var m = /^#\/app\/g\/([\w-]+)/.exec(hash);
+      if (m && findGroup(m[1])) selectedGroupId = m[1];
+      if (!findGroup(selectedGroupId)) selectedGroupId = state.groups.length ? state.groups[0].id : null;
+      try { localStorage.setItem(SELECTED_KEY, selectedGroupId || ''); } catch (e) { /* ignore */ }
+      showApp();
+    } else {
+      showLanding();
+    }
+  }
+
+  function showLanding() {
+    $('#landing-view').hidden = false;
+    $('#app-view').hidden = true;
+    document.title = 'Expense Splitter — Split expenses. Settle up. Stay friends.';
+  }
+
+  function showApp() {
+    $('#landing-view').hidden = true;
+    $('#app-view').hidden = false;
+    renderApp();
+  }
+
+  /* ============ Rendering ============ */
+
+  function renderApp() {
+    renderSidebar();
+    renderGroup();
+  }
+
+  function renderSidebar() {
+    var list = $('#group-list');
+    var html = '';
+    state.groups.forEach(function (g) {
+      var bal = computeBalances(g);
+      var you = youMember(g);
+      var net = you ? (bal[you.id] || 0) : 0;
+      var active = g.id === selectedGroupId;
+      var balClass = Math.abs(net) < EPSILON ? 'is-zero' : (net > 0 ? 'is-owed' : 'is-owe');
+      var balText = Math.abs(net) < EPSILON ? 'settled' : formatMoney(Math.abs(net), g.currency);
+      html += '<li><a class="group-item" href="#/app/g/' + escapeHtml(g.id) + '"' +
+        (active ? ' aria-current="page"' : '') + '>' +
+        '<span class="group-item-name">' + escapeHtml(g.name) + '</span>' +
+        '<span class="group-item-bal ' + balClass + '">' + escapeHtml(balText) + '</span>' +
+        '</a></li>';
+    });
+    list.innerHTML = html;
+  }
+
+  function renderGroup() {
+    var root = $('#group-root');
+    var group = currentGroup();
+    if (!group) {
+      root.innerHTML = '<div class="empty-state"><h3>No groups yet</h3>' +
+        '<p>Create your first group to start splitting expenses.</p>' +
+        '<button class="btn btn-primary" type="button" data-action="open-group">New group</button></div>';
+      $('#crumb-group').textContent = 'Dashboard';
+      document.title = 'Expense Splitter';
+      return;
+    }
+
+    $('#crumb-group').textContent = group.name;
+    document.title = group.name + ' · Expense Splitter';
+
+    var bal = computeBalances(group);
+    var suggestions = suggestSettlements(group, bal);
+    var you = youMember(group);
+
+    root.innerHTML =
+      '<div class="group-wrap">' +
+      groupHeadHtml(group) +
+      '<div class="group-grid">' +
+      '<div class="group-side">' +
+      balanceCardHtml(group, bal, you) +
+      suggestionsHtml(group, suggestions) +
+      '</div>' +
+      '<div class="group-main">' +
+      expensesHtml(group) +
+      settlementsHtml(group) +
+      '</div>' +
+      '</div>' +
+      '</div>';
+  }
+
+  function groupHeadHtml(group) {
+    var total = group.expenses.reduce(function (a, e) { return a + e.amount * (e.exchangeRate || 1); }, 0);
+    return '<header class="group-head">' +
+      '<h1 class="group-title">' + escapeHtml(group.name) + '</h1>' +
+      (group.description ? '<p class="group-desc">' + escapeHtml(group.description) + '</p>' : '') +
+      '<p class="group-meta">' +
+      '<span class="chip">' + escapeHtml(group.currency) + '</span>' +
+      '<span>' + group.members.length + ' members</span>' +
+      '<span aria-hidden="true">·</span>' +
+      '<span>' + group.expenses.length + ' expenses</span>' +
+      '<span aria-hidden="true">·</span>' +
+      '<span class="mono">' + escapeHtml(formatMoney(roundTo(total, group.currency), group.currency)) + ' total</span>' +
+      '</p></header>';
+  }
+
+  function balanceCardHtml(group, bal, you) {
+    var yourNet = you ? (bal[you.id] || 0) : 0;
+    var yourClass = Math.abs(yourNet) < EPSILON ? 'is-zero' : (yourNet > 0 ? 'is-owed' : 'is-owe');
+    var yourNote = Math.abs(yourNet) < EPSILON ? 'You are all settled up'
+      : (yourNet > 0 ? 'you are owed overall' : 'you owe overall');
+
+    var rows = group.members.map(function (m) {
+      var net = bal[m.id] || 0;
+      var cls = Math.abs(net) < EPSILON ? 'is-zero' : (net > 0 ? 'is-owed' : 'is-owe');
+      var sign = net > EPSILON ? '+' : (net < -EPSILON ? '−' : '');
+      var note = Math.abs(net) < EPSILON ? 'settled' : (net > 0 ? 'is owed' : 'owes');
+      var nameHtml = escapeHtml(m.name) + (you && m.id === you.id ? ' <span class="you-tag">(you)</span>' : '');
+      return '<li class="balance-row">' + avatarHtml(m) +
+        '<span class="balance-row-name">' + nameHtml + '</span>' +
+        '<span class="balance-row-amt">' +
+        '<span class="bal-amt ' + cls + '" aria-label="' + escapeHtml(m.name + ' ' + note + ' ' + formatMoney(Math.abs(net), group.currency)) + '">' +
+        sign + escapeHtml(formatMoney(Math.abs(net), group.currency)) + '</span>' +
+        '<span class="bal-note">' + note + '</span>' +
+        '</span></li>';
+    }).join('');
+
+    return '<section class="balance-card" aria-label="Balances">' +
+      '<div class="balance-you">' +
+      '<span class="balance-you-label">Your balance</span>' +
+      '<span class="balance-you-amt ' + yourClass + '">' +
+      (yourNet > EPSILON ? '+' : (yourNet < -EPSILON ? '−' : '')) +
+      escapeHtml(formatMoney(Math.abs(yourNet), group.currency)) + '</span>' +
+      '<span class="balance-you-note">' + yourNote + '</span>' +
+      '</div>' +
+      '<ul class="balance-list">' + rows + '</ul>' +
+      '</section>';
+  }
+
+  function suggestionsHtml(group, suggestions) {
+    if (!suggestions.length) {
+      return '<section class="suggestions" aria-label="Settlement suggestions">' +
+        '<h2 class="section-title">Settle up</h2>' +
+        '<p class="all-settled">' +
+        '<span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg></span>' +
+        'All settled up! Nothing left to square.</p></section>';
+    }
+    var rows = suggestions.map(function (s) {
+      var from = memberById(group, s.from);
+      var to = memberById(group, s.to);
+      var text = '<strong>' + escapeHtml(displayName(group, s.from)) + '</strong> owes <strong>' +
+        escapeHtml(displayName(group, s.to)) + '</strong> <span class="amt">' +
+        escapeHtml(formatMoney(s.amount, group.currency)) + '</span>';
+      return '<div class="suggestion-row">' + avatarHtml(from) +
+        '<p class="suggestion-text">' + text + '</p>' +
+        '<button class="btn btn-ghost" type="button" data-action="suggest-settle" data-from="' +
+        escapeHtml(s.from) + '" data-to="' + escapeHtml(s.to) + '" data-amount="' + s.amount + '">Record</button>' +
+        '</div>';
+    }).join('');
+    return '<section class="suggestions" aria-label="Settlement suggestions">' +
+      '<h2 class="section-title">Settle up</h2>' + rows + '</section>';
+  }
+
+  function expensesHtml(group) {
+    if (!group.expenses.length) {
+      return '<section aria-label="Expenses"><h2 class="section-title" style="margin-bottom: var(--space-3)">Expenses</h2>' +
+        '<div class="empty-state"><h3>No expenses yet</h3>' +
+        '<p>Add your first shared expense and Expense Splitter keeps track of who owes what.</p>' +
+        '<button class="btn btn-primary" type="button" data-action="open-expense">Add expense</button></div></section>';
+    }
+    var sorted = group.expenses.slice().sort(function (a, b) {
+      return new Date(b.date) - new Date(a.date);
+    });
+    var items = sorted.map(function (e) { return expenseItemHtml(group, e); }).join('');
+    return '<section aria-label="Expenses">' +
+      '<h2 class="section-title" style="margin-bottom: var(--space-3)">Expenses</h2>' +
+      '<ul class="expense-list">' + items + '</ul></section>';
+  }
+
+  function expenseItemHtml(group, e) {
+    var payer = memberById(group, e.paidBy);
+    var catColor = CATEGORY_COLORS[e.category] || CATEGORY_COLORS.Other;
+    var converted = e.currency !== group.currency
+      ? '<span class="expense-converted">≈ ' + escapeHtml(formatMoney(roundTo(e.amount * (e.exchangeRate || 1), group.currency), group.currency)) + '</span>'
+      : '';
+    var tag = e.splitType && e.splitType !== 'equal'
+      ? '<span class="split-tag">' + escapeHtml(e.splitType) + '</span>' : '';
+    var recurring = e.recurring ? '<span class="split-tag">' + escapeHtml(e.recurring) + '</span>' : '';
+
+    var detailRows = e.splits.map(function (s) {
+      var m = memberById(group, s.memberId);
+      var extra = s.percentage != null ? ' · ' + s.percentage + '%' : (s.shares != null ? ' · ' + s.shares + ' sh' : '');
+      return '<div class="expense-detail-row"><span>' + escapeHtml(displayName(group, s.memberId)) +
+        '<span class="hide-sm">' + escapeHtml(extra) + '</span></span>' +
+        '<span class="amt">' + escapeHtml(formatMoney(s.amount, e.currency)) + '</span></div>';
+    }).join('');
+    var notes = e.notes ? '<p class="expense-notes">' + escapeHtml(e.notes) + '</p>' : '';
+    var rateNote = e.currency !== group.currency
+      ? '<div class="expense-detail-row"><span>Rate at entry</span><span class="amt">1 ' + escapeHtml(e.currency) +
+        ' = ' + escapeHtml(String(e.exchangeRate)) + ' ' + escapeHtml(group.currency) + '</span></div>'
+      : '';
+
+    return '<li class="expense-item">' +
+      '<button class="expense-main" type="button" data-action="toggle-expense" aria-expanded="false" aria-controls="detail-' + escapeHtml(e.id) + '">' +
+      '<span class="cat-dot" style="background:' + catColor + '" aria-hidden="true"></span>' +
+      '<span class="expense-body">' +
+      '<span class="expense-desc">' + escapeHtml(e.description) + '</span>' +
+      '<span class="expense-sub">' + avatarHtml(payer) +
+      '<span>' + escapeHtml(displayName(group, e.paidBy)) + ' paid</span>' +
+      '<span aria-hidden="true">·</span>' +
+      '<time datetime="' + escapeHtml(e.date) + '" title="' + escapeHtml(fullDate(e.date)) + '">' + escapeHtml(relativeDate(e.date)) + '</time>' +
+      '<span class="hide-sm" aria-hidden="true">·</span><span class="hide-sm">' + escapeHtml(e.category) + '</span>' +
+      tag + recurring +
+      '</span></span>' +
+      '<span class="expense-amounts">' +
+      '<span class="expense-amount">' + escapeHtml(formatMoney(e.amount, e.currency)) + '</span>' +
+      converted +
+      '</span>' +
+      '<svg class="expense-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>' +
+      '</button>' +
+      '<div class="expense-detail" id="detail-' + escapeHtml(e.id) + '" hidden>' +
+      '<div class="expense-detail-table">' + detailRows + rateNote + '</div>' + notes +
+      '</div></li>';
+  }
+
+  function settlementsHtml(group) {
+    if (!group.settlements || !group.settlements.length) return '';
+    var sorted = group.settlements.slice().sort(function (a, b) {
+      return new Date(b.date) - new Date(a.date);
+    });
+    var items = sorted.map(function (s) {
+      var converted = s.currency !== group.currency
+        ? ' <span class="amt">(≈ ' + escapeHtml(formatMoney(roundTo(s.amount * (s.exchangeRate || 1), group.currency), group.currency)) + ')</span>'
+        : '';
+      return '<li class="settle-item">' +
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--color-owed)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 11.5h12m0 0-3.5-3.5M20 11.5l-3.5 3.5M16 17.5H4m0 0 3.5-3.5M4 17.5l3.5 3.5" transform="translate(0 -1.5)"/></svg>' +
+        '<span class="settle-item-text"><strong>' + escapeHtml(displayName(group, s.from)) + '</strong> paid <strong>' +
+        escapeHtml(displayName(group, s.to)) + '</strong> <span class="amt">' +
+        escapeHtml(formatMoney(s.amount, s.currency)) + '</span>' + converted + '</span>' +
+        '<time datetime="' + escapeHtml(s.date) + '" title="' + escapeHtml(fullDate(s.date)) + '">' + escapeHtml(relativeDate(s.date)) + '</time>' +
+        '</li>';
+    }).join('');
+    return '<section aria-label="Settlement history" style="margin-top: var(--space-6)">' +
+      '<h2 class="section-title" style="margin-bottom: var(--space-3)">Settlements</h2>' +
+      '<ul class="settle-list">' + items + '</ul></section>';
+  }
+
+  /* ============ Select population ============ */
+
+  function fillSelect(select, options, selected) {
+    select.innerHTML = options.map(function (o) {
+      return '<option value="' + escapeHtml(o.value) + '"' +
+        (o.value === selected ? ' selected' : '') + '>' + escapeHtml(o.label) + '</option>';
+    }).join('');
+  }
+
+  function currencyOptions() {
+    return CURRENCIES.map(function (c) { return { value: c, label: c }; });
+  }
+
+  function memberOptions(group) {
+    return group.members.map(function (m) {
+      return { value: m.id, label: m.name + (youMember(group) && m.id === youMember(group).id ? ' (you)' : '') };
+    });
+  }
+
+  /* ============ Expense dialog ============ */
+
+  function openExpenseDialog() {
+    var group = currentGroup();
+    if (!group) return;
+    var form = $('#expense-form');
+    form.reset();
+    showError($('#expense-error'), null);
+
+    fillSelect($('#exp-currency'), currencyOptions(), group.currency);
+    fillSelect($('#exp-paidby'), memberOptions(group), youMember(group) ? youMember(group).id : null);
+    fillSelect($('#exp-category'), CATEGORIES.map(function (c) { return { value: c, label: c }; }), 'Food & Drink');
+    $('#exp-date').value = new Date().toISOString().slice(0, 10);
+    form.dataset.groupId = group.id;
+
+    updateRateField();
+    renderSplitMembers();
+    updateSplitPreview();
+    openDialog($('#expense-dialog'));
+    $('#exp-desc').focus();
+  }
+
+  function splitType() {
+    var checked = document.querySelector('input[name="splitType"]:checked');
+    return checked ? checked.value : 'equal';
+  }
+
+  function selectedSplitMembers() {
+    var group = findGroup($('#expense-form').dataset.groupId);
+    if (!group) return [];
+    var checked = {};
+    document.querySelectorAll('#split-members input[type="checkbox"]').forEach(function (cb) {
+      if (cb.checked) checked[cb.value] = true;
+    });
+    return group.members.filter(function (m) { return checked[m.id]; });
+  }
+
+  function splitInputValues() {
+    var values = {};
+    document.querySelectorAll('#split-members input[data-split-input]').forEach(function (inp) {
+      var v = parseFloat(inp.value);
+      values[inp.dataset.memberId] = isNaN(v) ? 0 : v;
+    });
+    return values;
+  }
+
+  function renderSplitMembers() {
+    var group = findGroup($('#expense-form').dataset.groupId);
+    if (!group) return;
+    var type = splitType();
+    var currency = $('#exp-currency').value || group.currency;
+    var host = $('#split-members');
+
+    /* Preserve current input values across re-renders */
+    var prev = splitInputValues();
+    var prevChecked = {};
+    document.querySelectorAll('#split-members input[type="checkbox"]').forEach(function (cb) {
+      prevChecked[cb.value] = cb.checked;
+    });
+    var hasPrev = Object.keys(prevChecked).length > 0;
+
+    host.innerHTML = group.members.map(function (m) {
+      var isChecked = hasPrev ? prevChecked[m.id] !== false : true;
+      var inputHtml = '';
+      if (type === 'exact') {
+        inputHtml = '<span class="split-row-input"><input type="number" min="0" step="any" inputmode="decimal" data-split-input data-member-id="' +
+          escapeHtml(m.id) + '" value="' + (prev[m.id] != null ? prev[m.id] : '') + '" placeholder="0.00" aria-label="Amount for ' + escapeHtml(m.name) + '"> ' + escapeHtml(currency) + '</span>';
+      } else if (type === 'percentage') {
+        inputHtml = '<span class="split-row-input"><input type="number" min="0" max="100" step="any" inputmode="decimal" data-split-input data-member-id="' +
+          escapeHtml(m.id) + '" value="' + (prev[m.id] != null ? prev[m.id] : '') + '" placeholder="0" aria-label="Percentage for ' + escapeHtml(m.name) + '"> %</span>';
+      } else if (type === 'shares') {
+        inputHtml = '<span class="split-row-input"><input type="number" min="0" step="1" inputmode="numeric" data-split-input data-member-id="' +
+          escapeHtml(m.id) + '" value="' + (prev[m.id] != null ? prev[m.id] : 1) + '" aria-label="Shares for ' + escapeHtml(m.name) + '"> sh</span>';
+      }
+      return '<label class="split-row' + (isChecked ? '' : ' is-excluded') + '">' +
+        '<input type="checkbox" value="' + escapeHtml(m.id) + '"' + (isChecked ? ' checked' : '') + '>' +
+        avatarHtml(m) +
+        '<span class="split-row-name">' + escapeHtml(m.name) + '</span>' +
+        inputHtml +
+        '</label>';
+    }).join('');
+  }
+
+  function updateSplitPreview() {
+    var preview = $('#split-preview');
+    var group = findGroup($('#expense-form').dataset.groupId);
+    if (!group) { preview.textContent = ''; return; }
+    var amount = parseFloat($('#exp-amount').value);
+    var currency = $('#exp-currency').value || group.currency;
+    var members = selectedSplitMembers();
+    var type = splitType();
+
+    if (!members.length) { preview.textContent = 'Select at least one member to split with.'; return; }
+    if (!(amount > 0)) { preview.textContent = ''; return; }
+
+    if (type === 'exact') {
+      var inputs = splitInputValues();
+      var sum = members.reduce(function (a, m) { return a + (inputs[m.id] || 0); }, 0);
+      preview.textContent = formatMoney(roundTo(sum, currency), currency) + ' of ' +
+        formatMoney(amount, currency) + ' assigned';
+      return;
+    }
+    if (type === 'percentage') {
+      var pcts = splitInputValues();
+      var psum = members.reduce(function (a, m) { return a + (pcts[m.id] || 0); }, 0);
+      preview.textContent = roundTo(psum, currency) + '% of 100% assigned';
+      return;
+    }
+
+    var splits = computeSplits(type, amount, currency, members, splitInputValues());
+    var amounts = splits.map(function (s) { return s.amount; });
+    var uniform = amounts.every(function (a) { return a === amounts[0]; });
+    if (uniform) {
+      preview.textContent = formatMoney(amounts[0], currency) + ' each';
+    } else {
+      preview.textContent = splits.map(function (s) {
+        return displayName(group, s.memberId) + ' ' + formatMoney(s.amount, currency);
+      }).join(' · ');
+    }
+  }
+
+  function updateRateField() {
+    var group = findGroup($('#expense-form').dataset.groupId);
+    if (!group) return;
+    var currency = $('#exp-currency').value;
+    var field = $('#rate-field');
+    if (currency === group.currency) {
+      field.hidden = true;
+      return;
+    }
+    field.hidden = false;
+    var rate = defaultRate(currency, group.currency);
+    $('#exp-rate').value = rate;
+    $('#rate-hint').textContent = '1 ' + currency + ' ≈ ' + rate + ' ' + group.currency;
+  }
+
+  function defaultRate(fromCurrency, toCurrency) {
+    var from = RATE_PER_USD[fromCurrency] || 1;
+    var to = RATE_PER_USD[toCurrency] || 1;
+    var rate = to / from;
+    return Math.round(rate * 1000000) / 1000000;
+  }
+
+  function submitExpense() {
+    var form = $('#expense-form');
+    var group = findGroup(form.dataset.groupId);
+    var errorEl = $('#expense-error');
+    if (!group) return;
+
+    var description = $('#exp-desc').value.trim();
+    var amount = parseFloat($('#exp-amount').value);
+    var currency = $('#exp-currency').value;
+    var paidBy = $('#exp-paidby').value;
+    var dateVal = $('#exp-date').value;
+    var category = $('#exp-category').value;
+    var type = splitType();
+    var members = selectedSplitMembers();
+    var inputs = splitInputValues();
+
+    if (!description) { showError(errorEl, 'Please enter a description.'); $('#exp-desc').focus(); return; }
+    if (!(amount > 0)) { showError(errorEl, 'Please enter a valid amount greater than zero.'); $('#exp-amount').focus(); return; }
+    if (!dateVal) { showError(errorEl, 'Please pick a date.'); $('#exp-date').focus(); return; }
+    if (!members.length) { showError(errorEl, 'Select at least one member to split with.'); return; }
+
+    if (type === 'exact') {
+      var sum = members.reduce(function (a, m) { return a + (inputs[m.id] || 0); }, 0);
+      if (Math.abs(sum - amount) > unitFor(currency) / 2) {
+        showError(errorEl, 'Exact amounts must add up to ' + formatMoney(amount, currency) +
+          '. Currently: ' + formatMoney(roundTo(sum, currency), currency) + '.');
+        return;
+      }
+    }
+    if (type === 'percentage') {
+      var psum = members.reduce(function (a, m) { return a + (inputs[m.id] || 0); }, 0);
+      if (Math.abs(psum - 100) > 0.01) {
+        showError(errorEl, 'Percentages must add up to 100%. Currently: ' + roundTo(psum, currency) + '%.');
+        return;
+      }
+    }
+    if (type === 'shares') {
+      var ssum = members.reduce(function (a, m) { return a + (inputs[m.id] || 0); }, 0);
+      if (ssum <= 0) { showError(errorEl, 'Shares must add up to more than zero.'); return; }
+    }
+
+    var rate = 1;
+    if (currency !== group.currency) {
+      rate = parseFloat($('#exp-rate').value);
+      if (!(rate > 0)) { showError(errorEl, 'Please enter a valid exchange rate.'); $('#exp-rate').focus(); return; }
+    }
+
+    var expense = {
+      id: uid('exp'),
+      description: description,
+      amount: roundTo(amount, currency),
+      currency: currency,
+      exchangeRate: rate,
+      paidBy: paidBy,
+      splitType: type,
+      splits: computeSplits(type, amount, currency, members, inputs),
+      date: new Date(dateVal + 'T12:00:00Z').toISOString(),
+      category: category
+    };
+
+    group.expenses.push(expense);
+    saveState();
+    closeDialog($('#expense-dialog'));
+    renderApp();
+    announce('Expense added: ' + description + ', ' + formatMoney(expense.amount, currency) +
+      ', paid by ' + displayName(group, paidBy) + '.');
+  }
+
+  /* ============ Settle dialog ============ */
+
+  function openSettleDialog(prefill) {
+    var group = currentGroup();
+    if (!group) return;
+    var form = $('#settle-form');
+    form.reset();
+    showError($('#settle-error'), null);
+    form.dataset.groupId = group.id;
+
+    var options = memberOptions(group);
+    fillSelect($('#settle-from'), options, prefill && prefill.from ? prefill.from : null);
+    fillSelect($('#settle-to'), options, prefill && prefill.to ? prefill.to : null);
+    $('#settle-date').value = new Date().toISOString().slice(0, 10);
+    if (prefill && prefill.amount) $('#settle-amount').value = prefill.amount;
+
+    updateSettleHint();
+    openDialog($('#settle-dialog'));
+    $('#settle-amount').focus();
+  }
+
+  function updateSettleHint() {
+    var group = findGroup($('#settle-form').dataset.groupId);
+    if (!group) return;
+    var from = $('#settle-from').value;
+    var to = $('#settle-to').value;
+    var hint = $('#settle-hint');
+    if (from === to) {
+      hint.textContent = 'Pick two different members.';
+      return;
+    }
+    var bal = computeBalances(group);
+    var suggestions = suggestSettlements(group, bal);
+    var match = null;
+    for (var i = 0; i < suggestions.length; i++) {
+      if (suggestions[i].from === from && suggestions[i].to === to) { match = suggestions[i]; break; }
+    }
+    hint.textContent = match
+      ? displayName(group, from) + ' currently owes ' + displayName(group, to) + ' ' +
+        formatMoney(match.amount, group.currency) + '.'
+      : 'No outstanding balance from ' + displayName(group, from) + ' to ' + displayName(group, to) + '.';
+  }
+
+  function submitSettlement() {
+    var form = $('#settle-form');
+    var group = findGroup(form.dataset.groupId);
+    var errorEl = $('#settle-error');
+    if (!group) return;
+
+    var from = $('#settle-from').value;
+    var to = $('#settle-to').value;
+    var amount = parseFloat($('#settle-amount').value);
+    var dateVal = $('#settle-date').value;
+
+    if (from === to) { showError(errorEl, 'Pick two different members.'); return; }
+    if (!(amount > 0)) { showError(errorEl, 'Please enter a valid amount greater than zero.'); $('#settle-amount').focus(); return; }
+    if (!dateVal) { showError(errorEl, 'Please pick a date.'); $('#settle-date').focus(); return; }
+
+    var settlement = {
+      id: uid('stl'),
+      from: from,
+      to: to,
+      amount: roundTo(amount, group.currency),
+      currency: group.currency,
+      exchangeRate: 1,
+      date: new Date(dateVal + 'T12:00:00Z').toISOString()
+    };
+
+    group.settlements = group.settlements || [];
+    group.settlements.push(settlement);
+    saveState();
+    closeDialog($('#settle-dialog'));
+    renderApp();
+    announce('Settlement recorded: ' + displayName(group, from) + ' paid ' + displayName(group, to) +
+      ' ' + formatMoney(settlement.amount, group.currency) + '.');
+  }
+
+  /* ============ Group dialog ============ */
+
+  function openGroupDialog() {
+    var form = $('#group-form');
+    form.reset();
+    showError($('#group-error'), null);
+    fillSelect($('#grp-currency'), currencyOptions(), 'USD');
+    openDialog($('#group-dialog'));
+    $('#grp-name').focus();
+  }
+
+  function submitGroup() {
+    var errorEl = $('#group-error');
+    var name = $('#grp-name').value.trim();
+    var description = $('#grp-desc').value.trim();
+    var currency = $('#grp-currency').value;
+    var memberLines = $('#grp-members').value.split('\n')
+      .map(function (l) { return l.trim(); })
+      .filter(function (l) { return l.length > 0; });
+
+    if (!name) { showError(errorEl, 'Please give the group a name.'); $('#grp-name').focus(); return; }
+    if (!memberLines.length) { showError(errorEl, 'Add at least one member (the first one is you).'); $('#grp-members').focus(); return; }
+
+    var group = {
+      id: uid('grp'),
+      name: name,
+      description: description,
+      currency: currency,
+      createdAt: new Date().toISOString(),
+      members: memberLines.map(function (memberName, i) {
+        return {
+          id: uid('mem'),
+          name: memberName,
+          avatarColor: AVATAR_PALETTE[i % AVATAR_PALETTE.length]
+        };
+      }),
+      expenses: [],
+      settlements: []
+    };
+
+    state.groups.push(group);
+    saveState();
+    closeDialog($('#group-dialog'));
+    location.hash = '#/app/g/' + group.id;
+    announce('Group created: ' + name + '.');
+  }
+
+  /* ============ Reset ============ */
+
+  function resetData() {
+    if (!window.confirm('Reset all data back to the sample groups? Your changes will be lost.')) return;
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(SELECTED_KEY);
+    } catch (e) { /* ignore */ }
+    loadState().then(function () {
+      selectedGroupId = state.groups.length ? state.groups[0].id : null;
+      if (location.hash.indexOf('#/app') === 0) {
+        route();
+      } else {
+        location.hash = '#/app';
+      }
+      announce('Demo data restored.');
+    });
+  }
+
+  /* ============ Sidebar (mobile) ============ */
+
+  function openSidebar() {
+    document.body.classList.add('sidebar-open');
+    $('#sidebar-backdrop').hidden = false;
+  }
+
+  function closeSidebar() {
+    document.body.classList.remove('sidebar-open');
+    $('#sidebar-backdrop').hidden = true;
+  }
+
+  /* ============ Events ============ */
+
+  function bindEvents() {
+    document.addEventListener('click', function (ev) {
+      var actionEl = ev.target.closest('[data-action]');
+      if (actionEl) {
+        var action = actionEl.dataset.action;
+        if (action === 'toggle-theme') toggleTheme();
+        else if (action === 'open-expense') openExpenseDialog();
+        else if (action === 'open-settle') openSettleDialog(null);
+        else if (action === 'open-group') openGroupDialog();
+        else if (action === 'reset-data') resetData();
+        else if (action === 'open-sidebar') openSidebar();
+        else if (action === 'close-sidebar') closeSidebar();
+        else if (action === 'close-dialog') closeDialog(actionEl.closest('dialog'));
+        else if (action === 'suggest-settle') {
+          openSettleDialog({ from: actionEl.dataset.from, to: actionEl.dataset.to, amount: actionEl.dataset.amount });
+        } else if (action === 'toggle-expense') {
+          var expanded = actionEl.getAttribute('aria-expanded') === 'true';
+          actionEl.setAttribute('aria-expanded', String(!expanded));
+          var detail = document.getElementById(actionEl.getAttribute('aria-controls'));
+          if (detail) detail.hidden = expanded;
+        }
+        return;
+      }
+      /* Selecting a group in the sidebar closes the mobile drawer */
+      if (ev.target.closest('.group-item')) closeSidebar();
+    });
+
+    /* Forms */
+    $('#expense-form').addEventListener('submit', function (ev) { ev.preventDefault(); submitExpense(); });
+    $('#settle-form').addEventListener('submit', function (ev) { ev.preventDefault(); submitSettlement(); });
+    $('#group-form').addEventListener('submit', function (ev) { ev.preventDefault(); submitGroup(); });
+
+    /* Expense dialog live behavior */
+    $('#split-type-group').addEventListener('change', function () {
+      renderSplitMembers();
+      updateSplitPreview();
+    });
+    $('#split-members').addEventListener('input', updateSplitPreview);
+    $('#split-members').addEventListener('change', function (ev) {
+      if (ev.target.matches('input[type="checkbox"]')) {
+        ev.target.closest('.split-row').classList.toggle('is-excluded', !ev.target.checked);
+      }
+      updateSplitPreview();
+    });
+    $('#exp-amount').addEventListener('input', updateSplitPreview);
+    $('#exp-currency').addEventListener('change', function () {
+      updateRateField();
+      renderSplitMembers();
+      updateSplitPreview();
+    });
+
+    /* Settle dialog live behavior */
+    $('#settle-from').addEventListener('change', updateSettleHint);
+    $('#settle-to').addEventListener('change', updateSettleHint);
+
+    /* Routing */
+    window.addEventListener('hashchange', route);
+  }
+
+  /* ============ Init ============ */
+
+  function init() {
+    try {
+      selectedGroupId = localStorage.getItem(SELECTED_KEY) || null;
+    } catch (e) { /* ignore */ }
+    bindEvents();
+    $('#group-root').innerHTML = '<p class="loading-state">Loading your groups…</p>';
+    loadState()
+      .then(function () {
+        route();
+      })
+      .catch(function () {
+        $('#group-root').innerHTML = '<div class="empty-state"><h3>Couldn’t load the sample data</h3>' +
+          '<p>The file data/sample-groups.json could not be fetched. Serve the app over HTTP and reload.</p></div>';
+        location.hash = '#/app';
+        showApp();
+      });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();

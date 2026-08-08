@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Expense Splitter — Split expenses. Settle up. Stay friends.</title>
+  <meta name="description" content="Expense Splitter: split shared costs with friends, roommates, and travel companions. Flexible split types, multi-currency support, and clear settlement tracking.">
+  <script>
+    /* Apply the saved theme before first paint to avoid a flash of the wrong theme. */
+    (function () {
+      try {
+        var t = localStorage.getItem('expense-splitter:theme');
+        if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;
+      } catch (e) { /* storage unavailable: fall back to OS preference */ }
+    })();
+  </script>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <!-- ============ Landing ============ -->
+  <div id="landing-view">
+    <header class="landing-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="22" height="22"><rect width="32" height="32" rx="7" fill="var(--color-accent-subtle)"/><path d="M8 11.5h16m0 0-4.5-4.5M24 11.5l-4.5 4.5M24 20.5H8m0 0 4.5-4.5M8 20.5l4.5 4.5" stroke="var(--color-accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+        </span>
+        <span class="brand-name">Expense Splitter</span>
+      </div>
+      <div class="landing-header-actions">
+        <button class="icon-btn" type="button" data-action="toggle-theme" aria-label="Toggle color theme">
+          <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5 5l1.6 1.6M17.4 17.4 19 19M19 5l-1.6 1.6M6.6 17.4 5 19"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 14.2A8.5 8.5 0 1 1 9.8 3.6a7 7 0 1 0 10.6 10.6Z"/></svg>
+        </button>
+        <a class="btn btn-primary" href="#/app">Open dashboard</a>
+      </div>
+    </header>
+
+    <main class="landing-main" id="main">
+      <section class="hero">
+        <p class="hero-eyebrow mono">Group finance, minus the awkward</p>
+        <h1 class="hero-title">Split expenses.<br>Settle up.<br>Stay friends.</h1>
+        <p class="hero-sub">
+          One shared record of who paid for what, who owes whom, and the clearest
+          path to settling up. Equal, exact, percentage, or share-based splits,
+          across currencies, with balances that always add up.
+        </p>
+        <div class="hero-cta">
+          <a class="btn btn-primary btn-lg" href="#/app">Open dashboard</a>
+          <span class="hero-note">No account. No backend. Your data stays in this browser.</span>
+        </div>
+        <ul class="hero-stats mono" aria-label="Sample data included">
+          <li><strong>5</strong> sample groups</li>
+          <li><strong>43</strong> expenses</li>
+          <li><strong>10</strong> currencies</li>
+          <li><strong>4</strong> split types</li>
+        </ul>
+      </section>
+
+      <section class="features" aria-label="What Expense Splitter does">
+        <article class="feature-card">
+          <span class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>
+          </span>
+          <h2>Flexible splits</h2>
+          <p>Split equally, by exact amounts, by percentage, or by shares. Rounding is deterministic, so shares always sum to the total.</p>
+        </article>
+        <article class="feature-card">
+          <span class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15 9.2c-.5-1-1.6-1.7-3-1.7-1.9 0-3.4 1.3-3.4 3h4.4M8.6 13.5h4.4M8.6 10.5c0 1.7 1.5 3 3.4 3 1.4 0 2.5-.7 3-1.7M12 13.5V17"/></svg>
+          </span>
+          <h2>Multi-currency</h2>
+          <p>Log expenses in any of 10 major currencies. Every expense stores its exchange rate, so historical balances stay stable.</p>
+        </article>
+        <article class="feature-card">
+          <span class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14M7 7l-3 6a3.5 3.5 0 0 0 7 0L8 7M17 7l-3 6a3.5 3.5 0 0 0 7 0l-3-6"/></svg>
+          </span>
+          <h2>Balances that add up</h2>
+          <p>Net balances per member, plus pairwise settlement suggestions that minimize the number of payments to get everyone square.</p>
+        </article>
+        <article class="feature-card">
+          <span class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5c0 4.4 3 8.4 7 10 4-1.6 7-5.6 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+          </span>
+          <h2>Private by default</h2>
+          <p>Single-user and frontend-only: groups, expenses, and settlements persist to localStorage. Nothing leaves your browser.</p>
+        </article>
+      </section>
+    </main>
+
+    <footer class="landing-footer">
+      <p>Built as a Frontend Mentor Product Challenge · frontend-only build, data from <span class="mono">sample-groups.json</span></p>
+    </footer>
+  </div>
+
+  <!-- ============ App ============ -->
+  <div id="app-view" hidden>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar" aria-label="Sidebar">
+        <div class="sidebar-brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" width="22" height="22"><rect width="32" height="32" rx="7" fill="var(--color-accent-subtle)"/><path d="M8 11.5h16m0 0-4.5-4.5M24 11.5l-4.5 4.5M24 20.5H8m0 0 4.5-4.5M8 20.5l4.5 4.5" stroke="var(--color-accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+          </span>
+          <span class="brand-name">Expense Splitter</span>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="Your groups">
+          <p class="sidebar-label">Groups</p>
+          <ul class="group-list" id="group-list"></ul>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button class="btn btn-ghost btn-block" type="button" data-action="open-group">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            New group
+          </button>
+          <div class="sidebar-footer-row">
+            <button class="icon-btn" type="button" data-action="toggle-theme" aria-label="Toggle color theme">
+              <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5 5l1.6 1.6M17.4 17.4 19 19M19 5l-1.6 1.6M6.6 17.4 5 19"/></svg>
+              <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 14.2A8.5 8.5 0 1 1 9.8 3.6a7 7 0 1 0 10.6 10.6Z"/></svg>
+            </button>
+            <button class="linklike" type="button" data-action="reset-data">Reset demo data</button>
+          </div>
+        </div>
+      </aside>
+      <button class="sidebar-backdrop" id="sidebar-backdrop" type="button" data-action="close-sidebar" aria-label="Close group list" hidden></button>
+
+      <div class="app-content">
+        <header class="topbar">
+          <button class="icon-btn menu-btn" type="button" data-action="open-sidebar" aria-label="Open group list">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          </button>
+          <nav class="crumbs" aria-label="Breadcrumb">
+            <a href="#/app">Groups</a>
+            <span aria-hidden="true" class="crumb-sep">›</span>
+            <span id="crumb-group" aria-current="page">Dashboard</span>
+          </nav>
+          <div class="topbar-actions">
+            <button class="btn btn-ghost" type="button" data-action="open-settle">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 11.5h12m0 0-3.5-3.5M20 11.5l-3.5 3.5M16 17.5H4m0 0 3.5-3.5M4 17.5l3.5 3.5" transform="translate(0 -1.5)"/></svg>
+              Settle up
+            </button>
+            <button class="btn btn-primary" type="button" data-action="open-expense">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              Add expense
+            </button>
+          </div>
+        </header>
+
+        <main class="group-view" id="app-main" tabindex="-1">
+          <div id="group-root" aria-live="off"></div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Dialogs ============ -->
+  <dialog class="dialog" id="expense-dialog" aria-labelledby="expense-dialog-title">
+    <form id="expense-form" novalidate>
+      <div class="dialog-head">
+        <h2 id="expense-dialog-title">Add expense</h2>
+        <button class="icon-btn" type="button" data-action="close-dialog" aria-label="Close dialog">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="field">
+        <label for="exp-desc">Description</label>
+        <input id="exp-desc" name="description" type="text" required maxlength="80" placeholder="Dinner in Dotonbori" autocomplete="off">
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="exp-amount">Amount</label>
+          <input id="exp-amount" name="amount" type="number" min="0" step="any" inputmode="decimal" required placeholder="0.00">
+        </div>
+        <div class="field">
+          <label for="exp-currency">Currency</label>
+          <select id="exp-currency" name="currency"></select>
+        </div>
+      </div>
+
+      <div class="field" id="rate-field" hidden>
+        <label for="exp-rate">Exchange rate <span class="field-hint mono" id="rate-hint"></span></label>
+        <input id="exp-rate" name="rate" type="number" min="0" step="any" inputmode="decimal">
+        <p class="field-hint">Editable: the rate is stored with the expense so historical balances stay stable.</p>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="exp-paidby">Paid by</label>
+          <select id="exp-paidby" name="paidBy"></select>
+        </div>
+        <div class="field">
+          <label for="exp-date">Date</label>
+          <input id="exp-date" name="date" type="date" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="exp-category">Category</label>
+        <select id="exp-category" name="category"></select>
+      </div>
+
+      <fieldset class="field split-fieldset">
+        <legend>Split</legend>
+        <div class="segmented" id="split-type-group" role="radiogroup" aria-label="Split type">
+          <label class="segment"><input type="radio" name="splitType" value="equal" checked><span>Equal</span></label>
+          <label class="segment"><input type="radio" name="splitType" value="exact"><span>Exact</span></label>
+          <label class="segment"><input type="radio" name="splitType" value="percentage"><span>Percentage</span></label>
+          <label class="segment"><input type="radio" name="splitType" value="shares"><span>Shares</span></label>
+        </div>
+        <div class="split-members" id="split-members"></div>
+        <p class="split-preview mono" id="split-preview" aria-live="polite"></p>
+      </fieldset>
+
+      <p class="form-error" id="expense-error" role="alert" hidden></p>
+
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" data-action="close-dialog">Cancel</button>
+        <button class="btn btn-primary" type="submit">Add expense</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="dialog" id="settle-dialog" aria-labelledby="settle-dialog-title">
+    <form id="settle-form" novalidate>
+      <div class="dialog-head">
+        <h2 id="settle-dialog-title">Record a settlement</h2>
+        <button class="icon-btn" type="button" data-action="close-dialog" aria-label="Close dialog">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="settle-from">From</label>
+          <select id="settle-from" name="from"></select>
+        </div>
+        <div class="field">
+          <label for="settle-to">To</label>
+          <select id="settle-to" name="to"></select>
+        </div>
+      </div>
+      <p class="field-hint mono" id="settle-hint"></p>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="settle-amount">Amount</label>
+          <input id="settle-amount" name="amount" type="number" min="0" step="any" inputmode="decimal" required placeholder="0.00">
+        </div>
+        <div class="field">
+          <label for="settle-date">Date</label>
+          <input id="settle-date" name="date" type="date" required>
+        </div>
+      </div>
+      <p class="field-hint">Recorded in the group's currency. Partial settlements are fine; the rest stays open.</p>
+
+      <p class="form-error" id="settle-error" role="alert" hidden></p>
+
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" data-action="close-dialog">Cancel</button>
+        <button class="btn btn-primary" type="submit">Record payment</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="dialog" id="group-dialog" aria-labelledby="group-dialog-title">
+    <form id="group-form" novalidate>
+      <div class="dialog-head">
+        <h2 id="group-dialog-title">New group</h2>
+        <button class="icon-btn" type="button" data-action="close-dialog" aria-label="Close dialog">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="field">
+        <label for="grp-name">Group name</label>
+        <input id="grp-name" name="name" type="text" required maxlength="60" placeholder="Ski trip 2026" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="grp-desc">Description <span class="field-hint">(optional)</span></label>
+        <input id="grp-desc" name="description" type="text" maxlength="120" placeholder="Long weekend in the Alps" autocomplete="off">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="grp-currency">Default currency</label>
+          <select id="grp-currency" name="currency"></select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="grp-members">Members <span class="field-hint">(one per line, first one is you)</span></label>
+        <textarea id="grp-members" name="members" rows="4" required placeholder="You&#10;Riley&#10;Sam"></textarea>
+      </div>
+
+      <p class="form-error" id="group-error" role="alert" hidden></p>
+
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" data-action="close-dialog">Cancel</button>
+        <button class="btn btn-primary" type="submit">Create group</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="announcer" class="visually-hidden" aria-live="polite"></div>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
